@@ -1,6 +1,3 @@
-
-не доделано, т.к. вторая задача была неправильно понята и после уточнения коммитим и далее...
-
 /*
  Домашнее задание к занятию 2.2. Свойства и методы
 
@@ -21,7 +18,6 @@
 - список треков
 - количество треков в списке
 (экспериментируйте с "ленивыми" и вычисляемыми свойствами).
-
 Определите методы добавления и удаления треков в эту категорию.
 */
 
@@ -30,7 +26,6 @@ enum Countries: String {
     case ru = "Российская Федерация"
     case us = "USA"
     case fr = "République française"
-    case de = "Bundesrepublik Deutschland"
 }
 struct MusicTrack {
     var trackName: String
@@ -42,121 +37,51 @@ var tracks = [MusicTrack]()
 tracks.append(MusicTrack(trackName: "Road to me", artist: "Crash", duration: 33, country: .us))
 tracks.append(MusicTrack(trackName: "Плачешь", artist: "Клава Кока", duration: 155, country: .ru))
 tracks.append(MusicTrack(trackName: "Balance Ton Quoi", artist: "Angèle", duration: 265, country: .fr))
-tracks.append(MusicTrack(trackName: "Лунная соната", artist: "Бетховен", duration: 300, country: .de))
 
-// избыточные варианты для тренировки навыков при обучении
-class MusicCategory {
-    var categoryName: String = ""
 
-    // Массив. Индекс ненадёжная вещь.
-    lazy var listArray = [MusicTrack]() // В учебники смысл понятен -- отложенная тяжёлая инициализация, а тут получается просто в учебных целях.
-    var countArray: Int {
-        listArray.count
-        // return - вроде не обязательно в этом случае
+class MusicCategoryList {
+    var name: String
+    lazy var list = [MusicTrack]()
+    var count: Int {
+        list.count
     }
-    func insArray(track: MusicTrack) {
-        if !listArray.contains(where: {$0.trackName == track.trackName}) {
-            listArray.append(track)
+    func ins(track: MusicTrack) {
+        if !list.contains(where: {$0.trackName == track.trackName}) {
+            list.append(track)
         }
         else {
             print("не частите")
         }
     }
-    func delArray(name: String) {
-        if let i = listArray.firstIndex(where: {$0.trackName == name}) {
-            listArray.remove(at: i)
+    func del(trackName: String) {
+        if let i = list.firstIndex(where: {$0.trackName == trackName}) {
+            list.remove(at: i)
         }
         else {
             print("Нет такого трека")
         }
     }
-
-    // Теоретически можно добавить имена несуществующих треков. Это недостаток очень сильный.
-    lazy var listSet = Set<String>()
-    var countSet: Int {
-        get {                   // чисто для разнообразия
-            listSet.count
-        }
-    }
-    func insSet(name: String) {
-        let (b, name) = listSet.insert(name)
-        if b {
-            print("Добавлено: ", name)
-        } else {
-            print("есть уже")
-        }
-    }
-    func delSet(name: String) {
-        if listSet.contains(name) {
-            listSet.remove(name)
-        }
-        else {
-            print("No track named: \"\(name)\"")
-        }
-    }
-
-    // Словарь треков. Храним сразу всю информацию. Ключ - имя трека делает невозможность повторов.
-    lazy var listDic = [String: MusicTrack]() // all lazy not init
-    var countDic: Int {
-        listDic.count
-    }
-    func insDic(track: MusicTrack) {
-        listDic[track.trackName] = track
-    }
-    func delDic(name: String) {
-        listDic.removeValue(forKey: name) // ok or nill -- неважно
+    init(name: String) {
+        self.name = name
     }
 }
 
-var poprock = MusicCategory()
-poprock.categoryName = "Поп-Рок"
-
-print("\nArray\n")
-// poprock.listArray = tracks  // так проще и даже с диапазонами играть можно, но в задании надо не так
-// а так:
-poprock.insArray(track: tracks[0])
-poprock.insArray(track: tracks[1])
-for track in poprock.listArray {
+var poprock = MusicCategoryList(name: "Поп-Рок")
+tracks.forEach{ track in
+    poprock.ins(track: track)
+}
+print("Список треков в категории. Вариант 1:")
+poprock.list.forEach { track in
     print(track.trackName, track.artist, track.duration, track.country.rawValue)
 }
-for (index, track) in poprock.listArray.enumerated() {
+print("\nСписок треков в категории. Вариант 2:")
+for (index, track) in poprock.list.enumerated() {
     print(index, track.trackName, track.artist, track.duration, track.country.rawValue)
 }
-print("Количество треков в массиве категории ПопРок: \(poprock.countArray)")
-poprock.delArray(name: "Ву а ля")
-print("Количество треков в массиве категории ПопРок: \(poprock.countArray)")
-
-print("\n\nSet\n")
-poprock.insSet(name: tracks[0].trackName)
-poprock.insSet(name: tracks[1].trackName)
-poprock.insSet(name: tracks[1].trackName)
-print("Количество треков в множестве категории ПопРок: \(poprock.countSet)")
-// список в множестве скромный
-print(poprock.listSet)
-// и распечатка треков получается так
-poprock.listSet.forEach{item in
-    if let track = tracks.first(where: {$0.trackName == item}) {
-        print(track.trackName, track.artist, track.duration, track.country.rawValue)
-    }
-}
-poprock.delSet(name: "не существующее имя" )
-poprock.delSet(name: tracks[0].trackName )
-print("Количество треков в множестве категории ПопРок: \(poprock.countSet)")
-print(poprock.listSet)
-
-print("\n\nDic\n")
-poprock.insDic(track: tracks[0])
-poprock.insDic(track: tracks[1])
-print("Количество треков в словаре категории ПопРок: \(poprock.countDic)")
-//print(poprock.listDic.values)
-poprock.listDic.forEach {name, track in
-    print("Track name: \"\(name)\" and ones more track name \"\(track.trackName)\" from singer: \(track.artist) from \(track.country.rawValue) duration \(track.duration)")
-}
-poprock.delDic(name: tracks[1].trackName)
-print("Количество треков в словаре категории ПопРок: \(poprock.countDic)")
-poprock.delDic(name: "бред")
-print("Количество треков в словаре категории ПопРок: \(poprock.countDic)")
-
+print("Количество треков в массиве категории ПопРок: \(poprock.count)")
+poprock.del(trackName: "Balance Ton Quoi")
+poprock.del(trackName: "бред")
+print("Количество треков в массиве категории ПопРок: \(poprock.count)")
 
 
 /*
@@ -165,53 +90,71 @@ print("Количество треков в словаре категории П
 Алгоритм выполнения:
 Создайте класс библиотеки. Этот класс будет аналогичен классу категории, только хранить он должен список категорий.
  */
-
-// Предположим, что "аналогичен" не значит потомок, а просто похожий со списком категорий вместо названия категории. А иначе куда девать это название?
-//class MusicLibraryNew {
-//    var category = [MusicCategoryName: [String: MusicTrack]]()
-//    var list = [String : MusicTrack]()
-//    var count: Int {
-//        list.count
-//    }
-//    func ins(track: MusicTrack) {
-//        list[track.trackName] = track
-////        category[name] = list
-//    }
-//    func del(name: String) {
-//        list.removeValue(forKey: name)
-//    }
-//}
 print("\n\nTask 2\n")
 
-enum MusicCategoryName {
-    case poprock, jazz, classic
-    var name: String {
-        switch self {
-        case .poprock: return "Поп-Рок"
-        case .jazz: return "Джаз"
-        case .classic: return "Классика"
+enum MusicCategory: String, CaseIterable {
+    case poprock = "Поп-Рок"
+    case jazz = "Джаз"
+    case classic = "Классика"
+}
+class MusicLibrary {
+    var library = [MusicCategory: [MusicTrack]]()
+    var count: Int {
+        var sum = 0
+        library.forEach { (_, list) in
+     // for (_, list) in library {          // не понял ещё какая запись мне больше нравится :)
+            sum += list.count
+        }
+        return sum
+    }
+    // нет предела совершенству. Можно ещё счётчики по категориям делать и ...
+    func ins(category: MusicCategory, track: MusicTrack) {
+        // Инициализатор гарантирует наличие необходимого и можно форсить для краткости
+        guard !library[category]!.contains(where: {$0.trackName == track.trackName}) else {
+            print("не частите")
+            return
+        }
+        library[category]!.append(track)
+    }
+    func del(trackName: String) {
+        // library.forEach { (category, list) in
+        for (category, list) in library { // похоже так нагляднее из-за более видимой скобки в конце
+            if let index = list.firstIndex(where: {$0.trackName == trackName}) {
+                library[category]!.remove(at: index)
+                print("Трек удалён")
+                // А вот и нюанс! return по-разному работает при forEach и при for
+                return
+            }
+        }
+        print("Нет трека \"\(trackName)\" ни в одной из категорий")
+    }
+    func printSelf() {
+        for (caterory, list) in library {
+            print("Категория: \(caterory)")
+            for track in list {
+                print("\tName: \(track.trackName); Artist: \(track.artist); Duration: \(track.duration); From: \(track.country.rawValue)")
+            }
         }
     }
-//    case poprock(nama: "Поп-Рок", trackList: [String: MusicTrack])
-}
 
-class MusicLibrary: MusicCategory {
-    var categories = [MusicCategoryName: [String: MusicTrack]]()
-    func insToCategories(categoryName: MusicCategoryName, track: MusicTrack) {
-        categories[categoryName] = [track.trackName: track]
+    // Дабы гарантировать существование всех ключей и начальных пустых массивов для списка треков в словаре:
+    init() {
+        MusicCategory.allCases.forEach { category in
+            library.updateValue([], forKey: category)
+        }
     }
 }
+
 var music = MusicLibrary()
-tracks.forEach { track in
-    music.insDic(track: track)
-}
-music.insToCategories(categoryName: .jazz, track: tracks[0])
-music.insToCategories(categoryName: .poprock, track: tracks[1])
-music.insToCategories(categoryName: .poprock, track: tracks[2])
-music.insToCategories(categoryName: .classic, track: tracks[3])
-music.categories.forEach { category in
-    print("\(category.key): \(category.value)")
-}
+music.ins(category: .poprock, track: tracks[1])
+music.ins(category: .poprock, track: tracks[2])
+music.ins(category: .jazz, track: tracks[0])
+//music.ins(category: .old, track: tracks[0])   // не пройдёт // Type 'MusicCategory' has no member 'old'
+music.count // 3
+music.del(trackName: "Плачешь")
+music.del(trackName: "нечто")
+music.count // 2
+music.printSelf()
 
 
  /*
@@ -219,21 +162,29 @@ music.categories.forEach { category in
 Преобразуйте классы так, чтобы в пределах вашей библиотеки можно было обмениваться треками между категориями.
 */
 print("\n\nTask 3\n")
+
 class MusicLibraryPlus: MusicLibrary {
-    func swapTrack(newCategory: MusicCategoryName, track: MusicTrack ){
-        categories[newCategory] = [track.trackName: track]
+    func swapTrack(fromCategory: MusicCategory, toCategory: MusicCategory, track: MusicTrack ){
+        var list = library[fromCategory]!
+        if let index = list.firstIndex(where: {$0.trackName == track.trackName}) {
+            list.remove(at: index)
+            library.updateValue(list, forKey: fromCategory)
+            library[toCategory]! += [track]
+        }
+        else {
+            print("No track \"\(track.trackName)\" in \"\(fromCategory)\"")
+        }
     }
 }
 var musicPlus = MusicLibraryPlus()
-tracks.forEach { track in
-//    print(track)
-    musicPlus.insDic(track: track)
-}
-//print(musicPlus.listDic)
-musicPlus.insToCategories(categoryName: .jazz, track: tracks[0])
-musicPlus.insToCategories(categoryName: .poprock, track: tracks[1])
-musicPlus.insToCategories(categoryName: .poprock, track: tracks[2])
-musicPlus.insToCategories(categoryName: .classic, track: tracks[3])
-musicPlus.categories.forEach { category in
-    print("\(category.key): \(category.value)")
-}
+musicPlus.ins(category: .poprock, track: tracks[1])
+musicPlus.ins(category: .poprock, track: tracks[2])
+musicPlus.ins(category: .jazz, track: tracks[0])
+musicPlus.count
+musicPlus.printSelf()
+
+musicPlus.swapTrack(fromCategory: .poprock, toCategory: .classic, track: tracks[0])
+musicPlus.swapTrack(fromCategory: .jazz, toCategory: .classic, track: tracks[0])
+musicPlus.count
+print("--")
+musicPlus.printSelf()
