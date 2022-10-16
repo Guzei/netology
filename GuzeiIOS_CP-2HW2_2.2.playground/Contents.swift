@@ -53,9 +53,21 @@ class MusicCategoryList {
             print("не частите")
         }
     }
+// Плохой вариант
+//    func del(trackName: String) {
+//        if let i = list.firstIndex(where: {$0.trackName == trackName}) {
+//            list.remove(at: i)
+//        }
+//        else {
+//            print("Нет такого трека")
+//        }
+//    }
     func del(trackName: String) {
-        if let i = list.firstIndex(where: {$0.trackName == trackName}) {
-            list.remove(at: i)
+        if list.contains(where: {$0.trackName == trackName}) {
+            //list.removeAll(where: {$0.trackName == trackName})
+            // почитал статьи на тему следующием уроке про замыкания :)
+            list.removeAll{$0.trackName == trackName}
+            // жаль, что removeAll ничего не возвращает. Количество удалённых было бы полезно.
         }
         else {
             print("Нет такого трека")
