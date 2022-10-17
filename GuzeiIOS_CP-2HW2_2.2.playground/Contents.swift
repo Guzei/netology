@@ -63,13 +63,14 @@ class MusicCategory {
 //            print("Нет такого трека")
 //        }
 //    }
-    func del(trackName: String) {
+    func del(trackName: String) -> Bool {
         guard list.contains(where: {$0.trackName == trackName}) else {
             print("В категории \"\(name)\" нет трека \"\(trackName)\"")
-            return
+            return false
         }
         list.removeAll { $0.trackName == trackName }        // жаль, что removeAll ничего не возвращает. Количество удалённых было бы полезно.
         print("Трек \"\(trackName)\" найден и должн был быть удалён")
+        return true
     }
     func printSelf() {
         print("Список треков в категории \"\(name)\":")
@@ -99,7 +100,7 @@ jazz.printSelf()
 poprock.printSelf()
 classic.printSelf()
 
-print("\n\tУдаление")
+print("\n\t -- Удаление трека существующего и несуществующего -- ")
 var name = "Balance Ton Quoi"
 poprock.del(trackName: name)
 name = "бред"
@@ -129,13 +130,14 @@ class MusicLibrary {
         }
         list.append(category)
     }
-    func del(categoryName: String){
+    func del(categoryName: String) -> Bool {
         guard list.contains(where: {$0.name == categoryName}) else {
             print("Нет такой категории")
-            return
+            return false
         }
         list.removeAll{$0.name == categoryName}
         print("Категория \"\(categoryName)\" найдена и должна была быть удалена")
+        return true
     }
     func printSelf() {
         print("Список категорий и треков в библиотеке \"\(name)\":")
@@ -144,7 +146,6 @@ class MusicLibrary {
             category.printSelf()
         }
     }
-
     init(_ name: String) {
         self.name = name
     }
@@ -152,6 +153,8 @@ class MusicLibrary {
 var myMorningMusic = MusicLibrary("Утреннее")
 myMorningMusic.ins(category: jazz)
 myMorningMusic.ins(category: poprock)
+// вернём удалённый в задаче 1 трек
+poprock.ins(track: tracks[2])
 print("Количество музыкальных категорий в библиотеке:", myMorningMusic.count)
 myMorningMusic.printSelf()
 myMorningMusic.del(categoryName: "Джаз")
@@ -165,31 +168,9 @@ myMorningMusic.printSelf()
 */
 print("\n",line,"Task 3\n")
 
-// Хотел было так сделать, то переопредлить метод с добавлением возвращаемого типа не вышло
-
-// Функции удаления можно было сделать с возворатом Bool ещё в поервой здаче и тут было бы не надо, но в рамках задачи 1 что-либо возвращать не требуется.
-class MusicCategory2: MusicCategory {
-    func del(trackName: String) -> Bool {
-        guard list.contains(where: {$0.trackName == trackName}) else {
-            print("В категории \"\(name)\" нет трека \"\(trackName)\"")
-            return false
-        }
-        list.removeAll{$0.trackName == trackName}
-        print("Трек \"\(trackName)\" найден и должн был быть удалён")
-        return true
-    }
-}
+// Преобразовывать классы не вышло. Только одни класс :)
 class MusicLibrary2: MusicLibrary {
-    func del(categoryName: String) -> Bool {
-        guard list.contains(where: {$0.name == categoryName}) else {
-            print("Нет такой категории")
-            return false
-        }
-        list.removeAll{$0.name == categoryName}
-        print("Категория \"\(categoryName)\" найдена и должна была быть удалена")
-        return true
-    }
-    func swapTrack(track: MusicTrack, fromCategory: MusicCategory2, toCategory: MusicCategory2 ){
+    func swapTrack(track: MusicTrack, fromCategory: MusicCategory, toCategory: MusicCategory ){
         print("\n -- SWAP -- ")
         // при удалении трека проверяется его наличие в категории
         if fromCategory.del(trackName: track.trackName) {
@@ -197,119 +178,17 @@ class MusicLibrary2: MusicLibrary {
         }
     }
 }
-var myDaytimeMusic = MusicLibrary2("Дневное")
-myDaytimeMusic.ins(category: jazz)
-myDaytimeMusic.ins(category: poprock)
-myDaytimeMusic.ins(category: classic)
-print("Количество музыкальных категорий в библиотеке:", myDaytimeMusic.count)
-myDaytimeMusic.printSelf()
-if myDaytimeMusic.del(categoryName: "Поп-Рок") {
-    print("OK!")
-}
-print("\nAfter deleting")
-myDaytimeMusic.printSelf()
-
-// Сделал полной заменой классов
-print(line)
-class MusicCategoryPlus {
-    var name: String
-    lazy var list = [MusicTrack]()
-    var count: Int {
-        list.count
-    }
-    func ins(track: MusicTrack) {
-        guard !list.contains(where: {$0.trackName == track.trackName}) else {
-            print("не частите")
-            return
-        }
-        list.append(track)
-    }
-    func del(trackName: String) -> Bool {
-        guard list.contains(where: {$0.trackName == trackName}) else {
-            print("В категории \"\(name)\" нет трека \"\(trackName)\"")
-            return false
-        }
-        list.removeAll{$0.trackName == trackName}
-        print("Трек \"\(trackName)\" найден и должн был быть удалён")
-        return true
-    }
-    func printSelf() {
-        print("Список треков:")
-        for track in list {
-            print("\tName: \(track.trackName); Artist: \(track.artist); Duration: \(track.duration); From: \(track.country.rawValue)")
-        }
-    }
-    init(name: String) {
-        self.name = name
-    }
-}
-class MusicLibraryPlus {
-    var name: String
-    var list = [MusicCategoryPlus]()
-    var count: Int {
-        list.count
-    }
-    func ins(category: MusicCategoryPlus) {
-        guard !list.contains(where: {$0.name == category.name}) else {
-            print("не частите")
-            return
-        }
-        list.append(category)
-    }
-    func del(categoryName: String) -> Bool {
-        guard list.contains(where: {$0.name == categoryName}) else {
-            print("Нет такой категории")
-            return false
-        }
-        // Удаляем категорию из списка категорий
-        list.removeAll{$0.name == categoryName}
-        print("Категория \"\(categoryName)\" найдена и должна была быть удалена")
-        return true
-    }
-    func printSelf() {
-        print("\nСписок категорий и треков в библиотеке \"\(name)\":")
-        for category in list {
-            print("Категория \"\(category.name)\"")
-            category.printSelf()
-        }
-    }
-    func swapTrack(track: MusicTrack, fromCategory: MusicCategoryPlus, toCategory: MusicCategoryPlus ){
-        print("\n -- SWAP -- ")
-        // при удалении трека проверяется его наличие в категории
-        if fromCategory.del(trackName: track.trackName) {
-            toCategory.ins(track: track)
-            // можно подчистить пустую категорию. А можно и оставить -- может снова будет наполняться.
-//            if fromCategory.list.isEmpty {
-//                self.del(categoryName: fromCategory.name)
-//            }
-        }
-    }
-    init(_ name: String) {
-        self.name = name
-    }
-}
-
-var jazzPlus = MusicCategoryPlus(name: "Джаз")
-var poprockPlus = MusicCategoryPlus(name: "Поп-Рок")
-var classicPlus = MusicCategoryPlus(name: "Классика")
-
-jazzPlus.ins(track: tracks[0])
-poprockPlus.ins(track: tracks[1])
-poprockPlus.ins(track: tracks[2])
-classicPlus.ins(track: tracks[3])
-
-var myEvningMusic = MusicLibraryPlus("Вечернее")
-myEvningMusic.ins(category: jazzPlus)
-myEvningMusic.ins(category: poprockPlus)
-myEvningMusic.ins(category: poprockPlus) // не частите
-myEvningMusic.ins(category: classicPlus)
-//myEvningMusic.del(categoryName: "Классика")
+var myEvningMusic = MusicLibrary2("Вечернее")
+myEvningMusic.ins(category: jazz)
+myEvningMusic.ins(category: poprock)
+myEvningMusic.ins(category: poprock) // не частите
+myEvningMusic.ins(category: classic)
+//myEvningMusic.del(categoryName: "Поп-Рок")
 print("Количество музыкальных категорий в библиотеке \"\(myEvningMusic.name)\":", myEvningMusic.count)
 myEvningMusic.printSelf()
-myEvningMusic.swapTrack(track: tracks[0], fromCategory: jazzPlus, toCategory: poprockPlus)
+myEvningMusic.swapTrack(track: tracks[0], fromCategory: jazz, toCategory: classic)
 print("\n -- After swap -- ")
 myEvningMusic.printSelf()
-// не зря же метод писали
 print("\n -- After del category -- ")
 myEvningMusic.del(categoryName: "Джаз")
 myEvningMusic.del(categoryName: "Поп-Рок")
