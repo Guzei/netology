@@ -2,6 +2,8 @@ let line = "\n" + String(repeating: "-" as Character, count: 80) + "\n"
 /*
  Домашнее задание к занятию 2.2. Свойства и методы
 
+ version 3
+
 Задача 1
  Вы разрабатываете библиотеку аудиотреков. Вам необходимо реализовать одну из категорий музыки, наполненную треками.
 
@@ -54,7 +56,7 @@ class MusicCategory {
         }
         list.append(track)
     }
-// Плохой вариант
+// v.1 Плохой вариант .remove(at: i)
 //    func del(trackName: String) {
 //        if let i = list.firstIndex(where: {$0.trackName == trackName}) {
 //            list.remove(at: i)
@@ -63,13 +65,29 @@ class MusicCategory {
 //            print("Нет такого трека")
 //        }
 //    }
-    func del(trackName: String) -> Bool {
-        guard list.contains(where: {$0.trackName == trackName}) else {
-            print("В категории \"\(name)\" нет трека \"\(trackName)\"")
+// v.2
+//    func del(trackName: String) -> Bool {
+//        guard list.contains(where: {$0.trackName == trackName}) else {
+//            print("В категории \"\(name)\" нет трека \"\(trackName)\"")
+//            return false
+//        }
+//        list.removeAll { $0.trackName == trackName }        // жаль, что removeAll ничего не возвращает. Количество удалённых было бы полезно.
+//        print("Трек \"\(trackName)\" найден и должн был быть удалён")
+//        return true
+//    }
+
+//  v.3
+    // тип trackName при удалении отличный от типа при добавлении был сделан с самого начала осознано по следующей логике:
+    // 1) при добавлении трека без него не обойтись, а при удалении названия достаточно и писать название нагляднее, чем название переменной.
+    // 2) чисто учебных целях пощупать как метод будет зависеть от типа входящей переменной. Код чуть короче получился, но менее надёжный.
+    func del(track: MusicTrack) -> Bool {
+        // в этой версии guard похоже лишний, т.к. сам swift не позволит послать на вход несущестующий трек, т.к. все треки храняться в массиве. Если треки хранить как отдельные переменные, то guard будет снова нужен.
+        guard list.contains(where: {$0.trackName == track.trackName}) else {
+            print("В категории \"\(name)\" нет трека \"\(track.trackName)\"")
             return false
         }
-        list.removeAll { $0.trackName == trackName }        // жаль, что removeAll ничего не возвращает. Количество удалённых было бы полезно.
-        print("Трек \"\(trackName)\" найден и должн был быть удалён")
+        list.removeAll { $0.trackName == track.trackName } 
+        print("Трек \"\(track.trackName)\" найден и должн был быть удалён")
         return true
     }
     func printSelf() {
@@ -101,10 +119,8 @@ poprock.printSelf()
 classic.printSelf()
 
 print("\n\t -- Удаление трека существующего и несуществующего -- ")
-var name = "Balance Ton Quoi"
-poprock.del(trackName: name)
-name = "бред"
-poprock.del(trackName: name)
+poprock.del(track: tracks[2])
+// poprock.del(track: tracks[9]) // error: Execution was interrupted, reason: EXC_BREAKPOINT (code=1, subcode=0x18bc5923c).
 print("Количество треков категории \"\(poprock.name)\": \(poprock.count)")
 poprock.printSelf()
 
@@ -130,13 +146,13 @@ class MusicLibrary {
         }
         list.append(category)
     }
-    func del(categoryName: String) -> Bool {
-        guard list.contains(where: {$0.name == categoryName}) else {
+    func del(category: MusicCategory) -> Bool {
+        guard list.contains(where: {$0.name == category.name}) else {
             print("Нет такой категории")
             return false
         }
-        list.removeAll{$0.name == categoryName}
-        print("Категория \"\(categoryName)\" найдена и должна была быть удалена")
+        list.removeAll{$0.name == category.name}
+        print("Категория \"\(category.name)\" найдена и должна была быть удалена")
         return true
     }
     func printSelf() {
@@ -157,8 +173,8 @@ myMorningMusic.ins(category: poprock)
 poprock.ins(track: tracks[2])
 print("Количество музыкальных категорий в библиотеке:", myMorningMusic.count)
 myMorningMusic.printSelf()
-myMorningMusic.del(categoryName: "Джаз")
-print("\nAfter deleting")
+myMorningMusic.del(category: jazz)
+print(" -- After deleting")
 myMorningMusic.printSelf()
 
 
@@ -170,10 +186,10 @@ print("\n",line,"Task 3\n")
 
 // Преобразовывать классы не вышло. Только одни класс :)
 class MusicLibrary2: MusicLibrary {
-    func swapTrack(track: MusicTrack, fromCategory: MusicCategory, toCategory: MusicCategory ){
+    func swapTrack(track: MusicTrack, from fromCategory: MusicCategory, to toCategory: MusicCategory ) {
         print("\n -- SWAP -- ")
         // при удалении трека проверяется его наличие в категории
-        if fromCategory.del(trackName: track.trackName) {
+        if fromCategory.del(track: track) {
             toCategory.ins(track: track)
         }
     }
@@ -183,13 +199,15 @@ myEvningMusic.ins(category: jazz)
 myEvningMusic.ins(category: poprock)
 myEvningMusic.ins(category: poprock) // не частите
 myEvningMusic.ins(category: classic)
-//myEvningMusic.del(categoryName: "Поп-Рок")
 print("Количество музыкальных категорий в библиотеке \"\(myEvningMusic.name)\":", myEvningMusic.count)
 myEvningMusic.printSelf()
-myEvningMusic.swapTrack(track: tracks[0], fromCategory: jazz, toCategory: classic)
+myEvningMusic.swapTrack(track: tracks[0], from: jazz, to: classic)
 print("\n -- After swap -- ")
 myEvningMusic.printSelf()
 print("\n -- After del category -- ")
-myEvningMusic.del(categoryName: "Джаз")
-myEvningMusic.del(categoryName: "Поп-Рок")
+myEvningMusic.del(category: jazz)
+myEvningMusic.del(category: poprock)
 myEvningMusic.printSelf()
+
+
+// Во время работы над этим ДЗ я ещё сделал вариант, когда в первой задаче удаление не возвращет Bool и при переопределении классов переопределял и методы удаления. Так же в сам начале делал версию с подверсиями для массивов, множеств и словарей. Пытался нащупать как лучше хратить треки. Везде были плюсы и минусы.
