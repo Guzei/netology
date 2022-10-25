@@ -216,11 +216,10 @@ artists.forEach {
 
 artists[4].playTrack("CC") // Если печать по отдельности то скобок () нет. Загадка.
 
-artists[1].name
-//artists[1].nickName // Опс... У экземпляра это свойство есть, а как только экзепляр оказывается в массиве по индексу родителя, то свойства на уровень ниже становятся недоступными. Это я не из лекции, а здесь узнал: https://youtu.be/1D-DFsNS1tY?t=1183
-// смотрим видео дальше и записываем для конспекта :)
+//artists[1].nickName // Опс...
+// смотрим видео https://youtu.be/1D-DFsNS1tY?t=1183 и записываем для конспекта :)
 if artists[1] is PopArtistPlus {
-    (artists[1] as! PopArtistPlus).nickName
+    print(line, (artists[1] as! PopArtistPlus).nickName)
 }
 
 /*
@@ -234,7 +233,7 @@ if artists[1] is PopArtistPlus {
  convenience - что-то новенькое. По лекции всё понятно. Ещё лучше понял прочитав: https://swiftbook.ru/content/languageguide/initialization/
  final - тоже новое, но очевидное
  Для лучшего запоминания сделал шпаргалку
- https://github.com/Guzei/swift/blob/1fbab3348d2087b601af06103c684e801352fee0/inheritance.playground/Contents.swift
+ https://github.com/Guzei/swift/blob/main/inheritance.playground/Contents.swift
 
  Тема ООП (да и как и другие темы) в представленном объёме полностью понятна в момент прохождения и требудет много практики для закрепления.
 
