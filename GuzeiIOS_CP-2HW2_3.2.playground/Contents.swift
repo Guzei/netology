@@ -1,33 +1,34 @@
-/*
- Домашнее задание к занятию 3.2. Протоколы и расширения
-
- Задача 1 (основная)
-
- ВЫ - главный архитектор в команде разработчиков. Ваша задача - разработать программное обеспечение (ПО) для дилерских центров по продаже автомобилей. Ваша цель - создать гибкое ПО. Что это значит?
- Ваше ПО
- - должно подходить для любой марки авто,
- - должно быть расширяемым и масштабируемым в дальнейшем, чтобы ваша компания могла выпускать обновления.
- Задача разделена на 4 части, в каждой из них нужно самостоятельно подумать,
- - какой тип данных передать каждому свойству для комфортной работы, а также
- - по необходимости добавить вспомогательные методы.
-*/
-//import Foundation
+//
+// Домашнее задание к занятию 3.2. Протоколы и расширения
+//
+// Ваше ПО
+// - должно подходить для любой марки авто,
+// - должно быть расширяемым и масштабируемым в дальнейшем, чтобы ваша компания могла выпускать обновления.
+// Задача разделена на 4 части, в каждой из них нужно самостоятельно подумать,
+// - какой тип данных передать каждому свойству для комфортной работы, а также
+// - по необходимости добавить вспомогательные методы.
+//
+import Foundation
 
 let line = "\n" + String(repeating: "-" as Character, count: 80) + "\n"
 
-// MARK: - масштабируемость
-// Расширение марок продаваемых автомобилей и их диллерских центров здесь.
+// MARK: - масштабируемость и масштабируемость
+
+// не привязаны к конкретному году
+//let curentYear = Calendar.current.component(.year, from: Date())
+
+// enum не позволяет ошибиться в названии и позволяет расширять автобренды
 enum CarBrands: String, CaseIterable {
     case BMW, Honda, Audi, Lexus, Volvo
 }
 
-// Новые модные цвета автомобилей надо добавлять сюда
-enum Colors: CaseIterable {
+// Палитра всех прошлых, настоящих цветов. В будущем множно добавлять новые.
+enum Palette: CaseIterable {
     case red, green, blue
 }
 
-// Новые акксесуары тоже добавлять легко
-// Задачу можно сделать веселее задав разный набор аксессуаров разным брендам или салонам.
+// Для аксессуаров будем использовать Set, т.к. это удобно для сравнения и дополнения.
+// Задачу можно сделать веселее задав разный набор аксессуаров разным брендам и/или салонам.
 let allAccessories: Set<String> = ["toning", "signaling", "sportsDiscs", "firstAidKit", "fireExtinguisher"]
 
 
@@ -44,11 +45,11 @@ let allAccessories: Set<String> = ["toning", "signaling", "sportsDiscs", "firstA
 */
 protocol Car {
 
-    var model: CarBrands { get } // такой тип сокращает вероятность ошибки в соответствующем названии салона
-    var color: Colors { get } // у маших всегда ограниченный набор цветов
-    var buildDate: UInt16 { get } // нужен только год
+    var brand: CarBrands { get }
+    var color: Palette { get }
+    var buildDate: Date { get }
     var price: UInt32 { get set } // без копеек обойдёмся
-    var accessories: Set<String> { get set } // множество удобнее сравнивать и вычиать. Потом пригодится.
+    var accessories: Set<String> { get set }
     var isServiced: Bool { get set }
 
     mutating func buyingAccessories()
@@ -91,43 +92,116 @@ protocol Dealership {
     func addToShowroom(_ : inout Car) // принимает машину в качестве параметра. Метод перегоняет машину с парковки склада в автосалон, при этом выполняет предпродажную подготовку.
     func sellCar(_ : inout Car) // принимает машину в качестве параметра. Метод продает машину из автосалона при этом проверяет, выполнена ли предпродажная подготовка. Также, если у машины отсутсвует доп. оборудование, нужно предложить клиенту его купить. (давайте представим, что клиент всегда соглашается и покупает :) )
     func orderCar() // не принимает и не возвращает параметры. Метод делает заказ новой машины с завода, т.е. добавляет машину на парковку склада.
+
     // вспомогательные методы
-    func availabilityCheck(color: Colors) -> Car?
+    func availabilityCheck(color: Palette) -> Car?
 }
 
 // MARK: - Часть 3.
 
 // ! Используя структуры...
-struct BrendCar: Car {
+struct BrandCar: Car {
 
-    var model: CarBrands
-    var color: Colors
-    var buildDate: UInt16
-    var price: UInt32 = 0
-    var accessories: Set<String> = []
+    var vin: UUID
+    var brand: CarBrands
+    var color: Palette
+    var buildDate: Date
+    var price: UInt32
+    var accessories: Set<String>
     var isServiced: Bool = false
 
     mutating func buyingAccessories() {
-        // и это вариант проще некуда. Опять же благодаря выбранному типу непозволяющему дубли. Выборочная покупка чуть усложнила бы.
-        accessories = allAccessories
+        accessories = allAccessories // Купить всё
     }
 }
 
 // ! создайте несколько машин разных марок (например BMW, Honda, Audi, Lexus, Volvo). Все они должны реализовать протокол 'Car'.
 // Создаём завод по производству автомобилей
-// С завода атомоблии выходят без предпродажной, без цены и без аксессуаров. Это дело диллеров.
-var Cars = [Car]()
-for model in CarBrands.allCases {
-    for color in Colors.allCases {
-        let year = UInt16.random(in: 2021...2022) // странный, конечно, завод, который производит прошлогодние машины :)
-        Cars.append(BrendCar(model: model, color: color, buildDate: year ))
+protocol CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar
+}
+
+struct BmwFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        return BrandCar(vin: UUID.init(), brand: .BMW, color: color, buildDate: Date(), price: 20_000, accessories: ["toning", "signaling", "sportsDiscs"])
     }
 }
+struct HondaFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        return BrandCar(vin: UUID.init(), brand: .Honda, color: color, buildDate: Date(), price: 15_000, accessories: ["signaling", "sportsDiscs"])
+    }
+}
+struct AudiFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        return BrandCar(vin: UUID.init(), brand: .Audi, color: color, buildDate: Date(), price: 19_000, accessories: ["sportsDiscs"])
+    }
+}
+struct LexusFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        return BrandCar(vin: UUID.init(), brand: .Lexus, color: color, buildDate: Date(), price: 21_000, accessories: ["toning", "signaling"])
+    }
+}
+struct VolvoFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        return BrandCar(vin: UUID.init(), brand: .Volvo, color: color, buildDate: Date(), price: 21_000, accessories: ["signaling"])
+    }
+}
+
+// А вот и сами заводы
+let bmwFactory = BmwFactory()
+let hondaFactory = HondaFactory()
+let audiFactory = AudiFactory()
+let lexusFactory = LexusFactory()
+let volvoFactory = VolvoFactory()
+
+// Да, трейдеры они такие. Скупают всё. Потом по салонам развезут.
+struct Trader {
+
+    var factory: CarMakingDelegate?
+    var cars = [UUID : Car]()
+
+    mutating func orderCar(facroty: CarMakingDelegate, color: Palette) {
+        self.factory = facroty
+        let newCar = facroty.makeCar(color: color)
+        self.cars[newCar.vin] = newCar
+    }
+}
+
+var trader = Trader()
+// Тредер делат заказ автомобилей на разнх заводах.
+for _ in 1...50 {
+    if let color = Palette.allCases.randomElement() {
+        trader.orderCar(facroty: bmwFactory, color: color)
+    }
+}
+for _ in 1...20 {
+    if let color = Palette.allCases.randomElement() {
+        trader.orderCar(facroty: hondaFactory, color: color)
+    }
+}
+for _ in 1...25 {
+    if let color = Palette.allCases.randomElement() {
+        trader.orderCar(facroty: audiFactory, color: color)
+    }
+}
+for _ in 1...200 {
+    if let color = Palette.allCases.randomElement() {
+        trader.orderCar(facroty: lexusFactory, color: color)
+    }
+}
+for _ in 1...33 {
+    if let color = Palette.allCases.randomElement() {
+        trader.orderCar(facroty: volvoFactory, color: color)
+    }
+}
+
+trader.cars.count // 125 автомоблией сделаны
+
 
 // ! Используя классы
 // ! Обратите внимание! Используйте конструкцию приведения типа данных для решения этой задачи.
 // а это значит от нас требуется сделать на каждый диллерский центр свой класс.
-// общий класс для всех
+// 1. общий класс для всех
 class DealershipSalon: Dealership {
 
     var name: CarBrands
@@ -135,19 +209,19 @@ class DealershipSalon: Dealership {
     var stockCars: [Car] = [] // машины, находящиеся на парковке склада. парковка не имеет лимита по количеству машин.
     var showroomCars: [Car] = [] // машины, находящиеся в автосалоне. Учесть лимит showroomCapacity
     var cars: [Car] = [] // хранит список всех машин в наличии
+    var factory: CarMakingDelegate?
+    var sellColor: Palette = .red // ну уж очень устал, чтобы делать опционал. Сорри. Это не на что не влияет, т.к. будет использоваться после продажи.
 
     init(name: CarBrands, showroomCapacity: UInt16) {
         self.name = name
         self.showroomCapacity = showroomCapacity
     }
 
-    func availabilityCheck(color: Colors) -> Car? {
-        // ищем машину в салоне
+    func availabilityCheck(color: Palette) -> Car? {
         return cars.first(where: {$0.color == color})
     }
 
     func offerAccessories(_ accessories: [String]) {
-        //print("in acc: ",accessories)
         guard !accessories.isEmpty else {
             print("Задайте список возможных аксессуаров")
             return
@@ -172,13 +246,13 @@ class DealershipSalon: Dealership {
             print("Предпродажная подготовка не требуется")
             return
         }
-        print("\tНа предпродажную подготовку поступил автомобиль", car.model, car.color)
+        print("\tНа предпродажную подготовку поступил автомобиль", car.brand, car.color)
         car.isServiced = true
         print("Предпродажная подготовка произведена")
     }
 
     func addToShowroom(_ car: inout Car) {
-        print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.model, car.color)
+        print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.brand, car.color)
         // в нашем случае цвет как ID. Без ID автомобиля вообще не выйдет работать с двумя одинаковыми автомобилями отличающимися только по VIN.
         guard stockCars.contains(where: {$0.color == car.color}) else {
             print("На парковке салона такого автомобиля нет")
@@ -191,10 +265,9 @@ class DealershipSalon: Dealership {
         presaleService(&car)
     }
 
-    //Метод продает машину из автосалона при этом проверяет, выполнена ли предпродажная подготовка. Также, если у машины отсутсвует доп. оборудование, нужно предложить клиенту его купить. (давайте представим, что клиент всегда соглашается и покупает :) )
     func sellCar(_ car: inout Car) {
         // если автомобиля вообще нет в салоне, то проверки сюда не попасть. Проверка перед вызовом.
-        print("\tПродаём автомобиль", car.model, car.color)
+        print("\tПродаём автомобиль", car.brand, car.color)
         if showroomCars.first(where: {$0.color == car.color}) == nil {
             print("Машины в салне нет. Забираем её со стоянки.") // вариант, что машина в салоне есть, а её нет ни салоне, ни на парковке не должен случаться вообще.
             if showroomCars.count >= showroomCapacity {
@@ -222,115 +295,142 @@ class DealershipSalon: Dealership {
         }
 
         // удаяем машину из салона (на стоянке её ведь быть уже не может) и из общего списка
+        self.sellColor = car.color
         showroomCars.removeAll(where: {$0.color == car.color})
         cars.removeAll(where: {$0.color == car.color})
         print("\tПродано!")
+
+        orderCar()
     }
 
-    // Метод делает заказ новой машины с завода, т.е. добавляет машину на парковку склада.
     func orderCar() {
-//        var car = BrendCar(model: <#T##CarBrands#>, color: <#T##Colors#>, buildDate: <#T##UInt16#>)
-//        делегирование?
-//        stockCars.append(<#T##newElement: Car##Car#>)
-//        cars.append(<#T##newElement: Car##Car#>)
+        print("Салон \(name) заказывает себе новый автомобиль цвета \(sellColor)...")
+        guard let newCar = factory?.makeCar(color: sellColor) else {
+            print("Не удалость заказать автомобиль \(name) цвета \(sellColor) в салон")
+            return
+        }
+        stockCars.append(newCar)
+        cars.append(newCar)
+        print("Автомобиль успешно заказан на заводе \(factory!)")
     }
 }
 
-// Расширение марок продаваемых автомобилей и их диллерских центров здесь.
+// 2. классы диллерских центров по брендам
 final class DealershipSalonBMW: DealershipSalon {
 
     let slogan = "Freude am Fahren" // С удовольствием за рулём
 
-    init() {
+    init(factory: CarMakingDelegate) {
         super.init(name: .BMW, showroomCapacity: 100)
+        self.factory = factory
     }
 }
 final class DealershipSalonHonda: DealershipSalon {
 
     let slogan = "자동차에서 삶의 동반자로" // Сначала человек, потом машина
 
-    init() {
+    init(factory: CarMakingDelegate) {
         super.init(name: .Honda, showroomCapacity: 200)
+        self.factory = factory
     }
 }
 final class DealershipSalonAudi: DealershipSalon {
 
     let slogan = "Vorsprung durch Technik" // Превосходство технологий
 
-    init() {
+    init(factory: CarMakingDelegate) {
         super.init(name: .Audi, showroomCapacity: 90)
+        self.factory = factory
     }
 }
 final class DealershipSalonLexus: DealershipSalon {
 
     let slogan = "Lexus. Experience Amazing."
 
-    init() {
+    init(factory: CarMakingDelegate) {
         super.init(name: .Lexus, showroomCapacity: 80)
+        self.factory = factory
     }
 }
 final class DealershipSalonVolvo: DealershipSalon {
 
     let slogan = "Volvo. For life"
 
-    init() {
+    init(factory: CarMakingDelegate) {
         super.init(name: .Volvo, showroomCapacity: 70)
+        self.factory = factory
     }
 }
 
-Cars // автомобили различных марок, цветов и дат производства готовы. Они едут в свои салоны.
 // ! создайте пять различных дилерских центров (например BMW, Honda, Audi, Lexus, Volvo). Все они должны реализовать протокол 'Dealership'.
 // протокол реализуется через класс
-var dealershipBMW   = DealershipSalonBMW()
-var dealershipHonda = DealershipSalonHonda()
-var dealershipAudi  = DealershipSalonAudi()
-var dealershipLexus = DealershipSalonLexus()
-var dealershipVolvo = DealershipSalonVolvo()
+var dealershipBMW   = DealershipSalonBMW(factory: bmwFactory)
+var dealershipHonda = DealershipSalonHonda(factory: hondaFactory)
+var dealershipAudi  = DealershipSalonAudi(factory: audiFactory)
+var dealershipLexus = DealershipSalonLexus(factory: lexusFactory)
+var dealershipVolvo = DealershipSalonVolvo(factory: volvoFactory)
 
 // ! Каждому дилерскому центру добавьте машин на парковку и в автосалон (используйте те машины, которые создали ранее).
 // Автосалон при получении автомобиля назначает ему стоимость и даёт от 1 до 3 аксессуара на удачу. Если случайная величина совпадёт, то будет менее трёх аксессуаров.
 
-for var car in Cars {
-//    print(car)
-    switch car.model {
+// Трейдер раставляет автомобили по салонам
+trader.cars.forEach { (_: UUID, car: Car) in
+    switch car.brand {
     case .BMW:
-        car.price = 20_000
-        car.accessories = [allAccessories.randomElement()!, allAccessories.randomElement()!, allAccessories.randomElement()!]
-        dealershipBMW.stockCars.append(car)
         dealershipBMW.cars.append(car)
+        if car.color == .red  &&  dealershipBMW.showroomCars.count < dealershipBMW.showroomCapacity {
+            dealershipBMW.showroomCars.append(car)
+        } else {
+            dealershipBMW.stockCars.append(car)
+        }
     case .Honda:
-        car.price = 10_000
-        car.accessories = [allAccessories.randomElement()!, allAccessories.randomElement()!, allAccessories.randomElement()!]
-        dealershipHonda.stockCars.append(car)
         dealershipHonda.cars.append(car)
+        if car.color != .red  &&  dealershipHonda.showroomCars.count < dealershipHonda.showroomCapacity {
+            dealershipHonda.showroomCars.append(car)
+        } else {
+            dealershipHonda.stockCars.append(car)
+        }
     case .Audi:
-        car.price = 19_000
-        car.accessories = [allAccessories.randomElement()!, allAccessories.randomElement()!, allAccessories.randomElement()!]
-        dealershipAudi.stockCars.append(car)
         dealershipAudi.cars.append(car)
+        if dealershipAudi.showroomCars.count < dealershipAudi.showroomCapacity {
+            dealershipAudi.showroomCars.append(car)
+        } else {
+            dealershipAudi.stockCars.append(car)
+        }
     case .Lexus:
-        car.price = 21_000
-        car.accessories = [allAccessories.randomElement()!, allAccessories.randomElement()!, allAccessories.randomElement()!]
-        dealershipLexus.stockCars.append(car)
         dealershipLexus.cars.append(car)
+        if dealershipLexus.showroomCars.count < dealershipLexus.showroomCapacity {
+            dealershipLexus.showroomCars.append(car)
+        } else {
+            dealershipLexus.stockCars.append(car)
+        }
     case .Volvo:
-        car.price = 18_000
-        car.accessories = [allAccessories.randomElement()!, allAccessories.randomElement()!, allAccessories.randomElement()!]
-        dealershipVolvo.stockCars.append(car)
         dealershipVolvo.cars.append(car)
+        if dealershipVolvo.showroomCars.count < dealershipVolvo.showroomCapacity {
+            dealershipVolvo.showroomCars.append(car)
+        } else {
+            dealershipVolvo.stockCars.append(car)
+        }
     }
 }
-// теперь на парковке каждого салона по три машины с ценой и аксессуарами, но по-прежнему без предпродажной подготовки
-//DealershipBMW.cars.forEach{print($0.accessories)} // для контроля
+dealershipBMW.cars // для контроля
 
 // Пришёл покупатель за чёрным бумером, а такой цвет отсутствует в списке цветов у менеджера и даже проверок делать не надо.
 // Пришёл покупатель на красную БМВ.
-var color = Colors.red
+var color = Palette.red
 var car = dealershipBMW.availabilityCheck(color: color)
 if car == nil {
     print("Извините, в салоне нет машины цвета: ", color)
 } else {
     dealershipBMW.sellCar(&car!)
+}
+print(line)
+color = .blue
+car = dealershipVolvo.availabilityCheck(color: color)
+if car == nil {
+    print("Извините, в салоне нет машины цвета: ", color)
+} else {
+    dealershipVolvo.sellCar(&car!)
 }
 
 // ! Создайте массив, положите в него созданные дилерские центры.
@@ -355,6 +455,7 @@ Dealerships.forEach {
     }
 }
 
+
 // MARK: - Часть 4.
 /*
  Работа с расширениями. Нам нужно добавить спецпредложение для "прошлогодних" машин.
@@ -369,20 +470,25 @@ Dealerships.forEach {
  Используя расширение, реализуйте протокол 'SpecialOffer' для любых трех дилерских центров.
  Проверьте все машины в дилерском центре (склад + автосалон), возможно они нуждаются в специальном предложении. Если есть машины со скидкой на складе, нужно перегнать их в автосалон.
  */
-protocol SpecialOffer {
-    func addEmergencyPack() // добавляет аптечку и огнетушитель к доп. оборудованию машины.
-    func makeSpecialOffer() // проверяет дату выпуска авто, если год выпуска машины меньше текущего, нужно сделать скидку 15%, а также добавить аптеку и огнетушитель.
-}
-
-let accessoriesForOls: Set<String> = ["firstAidKit", "fireExtinguisher"]
-
-extension DealershipSalonBMW: SpecialOffer {
-
-    func addEmergencyPack() {
-        
-    }
-
-    func makeSpecialOffer() {
-
-    }
-}
+//protocol SpecialOffer {
+//    func addEmergencyPack() // добавляет аптечку и огнетушитель к доп. оборудованию машины.
+//    func makeSpecialOffer() // проверяет дату выпуска авто, если год выпуска машины меньше текущего, нужно сделать скидку 15%, а также добавить аптеку и огнетушитель.
+//}
+//
+//let emergencyPack: Set<String> = ["firstAidKit", "fireExtinguisher"]
+//
+//extension DealershipSalonBMW: SpecialOffer {
+//
+//    func addEmergencyPack() {
+//        accessuare.uppend(emergencyPack)
+//    }
+//
+//    func makeSpecialOffer() {
+//        cars.forEach{
+//            if $0.buildDate == 2021 {
+//                $0.price = UInt32(Double($0.price) * 0.85)
+//                addEmergencyPack()
+//            }
+//        }
+//    }
+//}
