@@ -153,7 +153,7 @@ struct VolvoFactory: CarMakingDelegate {
 }
 
 // А вот и сами заводы
-var factiries: [CarBrands : CarMakingDelegate] = [.BMW   : BmwFactory(),
+var factories: [CarBrands : CarMakingDelegate] = [.BMW   : BmwFactory(),
                                                   .Honda : HondaFactory(),
                                                   .Audi  : AudiFactory(),
                                                   .Lexus : LexusFactory(),
@@ -172,16 +172,19 @@ struct Trader {
     }
 }
 
-var trader = Trader()
 // Тредер делат заказ автомобилей на всех заводах.
+var trader = Trader()
 CarBrands.allCases.forEach { brand in
     for _ in 1...countCarsInFactory[brand]! {
         if let color = Palette.allCases.randomElement() {
-            trader.orderCar(facroty: factiries[brand]!, color: color)
+            if let factory = factories[brand] {
+                trader.orderCar(facroty: factory, color: color)
+            } else {
+                print("Нет фабрики для бренда: ", brand)
+            }
         }
     }
 }
-
 print("Количество автомобилей всех марок заказанных трейдером: ", trader.cars.count )
 
 
@@ -240,7 +243,6 @@ class DealershipSalon: Dealership {
 
     func addToShowroom(_ car: inout Car) {
         print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.brand, car.color)
-        // в нашем случае цвет как ID. Без ID автомобиля вообще не выйдет работать с двумя одинаковыми автомобилями отличающимися только по VIN.
         guard stockCars.contains(where: {$0.color == car.color}) else {
             print("На парковке салона такого автомобиля нет")
             return
@@ -350,115 +352,83 @@ final class DealershipSalonVolvo: DealershipSalon {
 }
 
 // ! создайте пять различных дилерских центров (например BMW, Honda, Audi, Lexus, Volvo). Все они должны реализовать протокол 'Dealership'.
-// протокол реализуется через класс
-var dealershipBMW   = DealershipSalonBMW(factory: factiries[.BMW]!)
-var dealershipHonda = DealershipSalonHonda(factory: factiries[.Honda]!)
-var dealershipAudi  = DealershipSalonAudi(factory: factiries[.Audi]!)
-var dealershipLexus = DealershipSalonLexus(factory: factiries[.Lexus]!)
-var dealershipVolvo = DealershipSalonVolvo(factory: factiries[.Volvo]!)
-
-let dealershipBrands: [CarBrands : DealershipSalon] = [.BMW   : dealershipBMW,
-                                                       .Honda : dealershipHonda,
-                                                       .Audi  : dealershipAudi,
-                                                       .Lexus : dealershipLexus,
-                                                       .Volvo : dealershipVolvo]
+// протокол реализуется через класс. Сложим все диллерские центры (салоны) в словарь для дальнейшего удобства.
+var dealershipBrands = [CarBrands : DealershipSalon]()
+dealershipBrands[.BMW] = DealershipSalonBMW(factory: factories[.BMW]!)
+dealershipBrands[.Honda] = DealershipSalonHonda(factory: factories[.Honda]!)
+dealershipBrands[.Audi] = DealershipSalonAudi(factory: factories[.Audi]!)
+dealershipBrands[.Lexus] = DealershipSalonLexus(factory: factories[.Lexus]!)
+dealershipBrands[.Volvo] = DealershipSalonVolvo(factory: factories[.Volvo]!)
 
 // ! Каждому дилерскому центру добавьте машин на парковку и в автосалон (используйте те машины, которые создали ранее).
 // Автосалон при получении автомобиля назначает ему стоимость и даёт от 1 до 3 аксессуара на удачу. Если случайная величина совпадёт, то будет менее трёх аксессуаров.
 
 // Трейдер раставляет автомобили по салонам
-trader.cars.forEach { (vin: UUID, car: Car) in
-    switch car.brand {
-    case .BMW:
-        dealershipBrands[.BMW]?.cars.append(car)
-        dealershipBMW.cars.append(car)
-        if car.color == .red  &&  dealershipBMW.showroomCars.count < dealershipBMW.showroomCapacity {
-            dealershipBMW.showroomCars.append(car)
+for (vin, car) in trader.cars {
+    if let salon = dealershipBrands[car.brand] {
+        salon.cars.append(car)
+        // ставим автомобили в салон по цвету, но не более, чем мест в салоне.
+        if car.color == Palette.allCases.randomElement()  &&  salon.showroomCars.count < salon.showroomCapacity {
+            salon.showroomCars.append(car)
         } else {
-            dealershipBMW.stockCars.append(car)
+            salon.stockCars.append(car)
         }
-        // удалять машины у тейдера, по условию этой задачи можно было бы сразу все, но так культурнее.
-        trader.cars[vin] = nil
-    case .Honda:
-        dealershipHonda.cars.append(car)
-        if car.color != .red  &&  dealershipHonda.showroomCars.count < dealershipHonda.showroomCapacity {
-            dealershipHonda.showroomCars.append(car)
-        } else {
-            dealershipHonda.stockCars.append(car)
-        }
-        trader.cars[vin] = nil
-    case .Audi:
-        dealershipAudi.cars.append(car)
-        if dealershipAudi.showroomCars.count < dealershipAudi.showroomCapacity {
-            dealershipAudi.showroomCars.append(car)
-        } else {
-            dealershipAudi.stockCars.append(car)
-        }
-        trader.cars[vin] = nil
-    case .Lexus:
-        dealershipLexus.cars.append(car)
-        if dealershipLexus.showroomCars.count < dealershipLexus.showroomCapacity {
-            dealershipLexus.showroomCars.append(car)
-        } else {
-            dealershipLexus.stockCars.append(car)
-        }
-        trader.cars[vin] = nil
-    case .Volvo:
-        dealershipVolvo.cars.append(car)
-        if dealershipVolvo.showroomCars.count < dealershipVolvo.showroomCapacity {
-            dealershipVolvo.showroomCars.append(car)
-        } else {
-            dealershipVolvo.stockCars.append(car)
-        }
-        trader.cars[vin] = nil
+        trader.cars[vin] = nil // просто перестаить экземпляр структуры не знаю как. Получается делаем копию в салон, а потом удаляем у трейдера.
+    } else {
+        print("Для марки \(car.brand) не нашлось салона")
     }
 }
-
-print("Количество автомобилей переданнх в диллерский центр БМВ: ", dealershipBMW.cars.count)
-print("Количество автомобилей переданнх в диллерский центр Хонда: ", dealershipHonda.cars.count)
-print("Количество автомобилей переданнх в диллерский центр Ауди: ", dealershipAudi.cars.count)
-print("Количество автомобилей переданнх в диллерский центр Лексус: ", dealershipLexus.cars.count)
-print("Количество автомобилей переданнх в диллерский центр Вольво: ", dealershipVolvo.cars.count)
+dealershipBrands.forEach { (brand: CarBrands, salon: DealershipSalon) in
+    print("Количество автомобилей переданнх в диллерский центр \(brand)): ", salon.cars.count)
+}
 print("Количество автомоблией оставшихся у трейдера: ", trader.cars.count)
 
 // Пришёл покупатель за чёрным бумером, а такой цвет отсутствует в списке цветов у менеджера и даже проверок делать не надо.
-print("Пришёл покупатель на красную БМВ.")
+print("\n\nПокупатель пришёлв свлон БМВ за красной машиной.")
+// Покупатель в салоне, значит он точно есть!
+var brand = CarBrands.BMW
+var salon = dealershipBrands[brand]!
 var color = Palette.red
-var car = dealershipBMW.availabilityCheck(color: color)
+var car = salon.availabilityCheck(color: color)
 if car == nil {
     print("Извините, в салоне нет машины цвета: ", color)
 } else {
-    dealershipBMW.sellCar(&car!)
+    salon.sellCar(&car!)
 }
 print(line)
-print("Пришёл покупатель на синию Вольво.")
-color = .blue
-car = dealershipVolvo.availabilityCheck(color: color)
+print("В салон Вольво пришёл покупатель на синей машиной.")
+brand = CarBrands.Volvo
+salon = dealershipBrands[brand]!
+color = Palette.blue
+car = salon.availabilityCheck(color: color)
 if car == nil {
     print("Извините, в салоне нет машины цвета: ", color)
 } else {
-    dealershipVolvo.sellCar(&car!)
+    salon.sellCar(&car!)
 }
 
 // ! Создайте массив, положите в него созданные дилерские центры.
+// из словаря массив :)
 var dealerships = [Dealership]()
-dealerships = [dealershipBMW, dealershipHonda, dealershipAudi, dealershipLexus, dealershipVolvo]
+dealershipBrands.forEach { (_, salon: DealershipSalon) in
+    dealerships += [salon]
+}
 
 // ! Пройдитесь по нему циклом и выведите в консоль слоган для каждого дилеского центра (слоган можно загуглить).
 // ! Обратите внимание! Используйте конструкцию приведения типа данных для решения этой задачи.
 // Dealerships[0].slogan -- у суперкласса нет слогана, поэтому идём на ступень ниже:
 print("\n", line, "Слоганы автосалонов:")
 dealerships.forEach {
-    if let car = $0 as? DealershipSalonBMW {
-        print($0.name, "-", car.slogan)
-    } else if let car = $0 as? DealershipSalonHonda {
-        print($0.name, "-", car.slogan)
-    } else if let car = $0 as? DealershipSalonAudi {
-        print($0.name, "-", car.slogan)
-    } else if let car = $0 as? DealershipSalonLexus {
-        print($0.name, "-", car.slogan)
-    } else if let car = $0 as? DealershipSalonVolvo {
-        print($0.name, "-", car.slogan)
+    if let salon = $0 as? DealershipSalonBMW {
+        print($0.name, "-", salon.slogan)
+    } else if let salon = $0 as? DealershipSalonHonda {
+        print($0.name, "-", salon.slogan)
+    } else if let salon = $0 as? DealershipSalonAudi {
+        print($0.name, "-", salon.slogan)
+    } else if let salon = $0 as? DealershipSalonLexus {
+        print($0.name, "-", salon.slogan)
+    } else if let salon = $0 as? DealershipSalonVolvo {
+        print($0.name, "-", salon.slogan)
     }
 }
 
@@ -478,41 +448,106 @@ print(line)
  Проверьте все машины в дилерском центре (склад + автосалон), возможно они нуждаются в специальном предложении. Если есть машины со скидкой на складе, нужно перегнать их в автосалон.
 */
 
-protocol SpecialOffer {
-    func addEmergencyPack()
-    func makeSpecialOffer()
-}
-
 let emergencyPack: Set<String> = ["firstAidKit", "fireExtinguisher"]
 
-extension DealershipSalonBMW: SpecialOffer {
-
-    // добавляет аптечку и огнетушитель к доп. оборудованию машины.
-    func addEmergencyPack() {
-//        car.accessuare.uppend(emergencyPack)
-        print("А ещё мы бесплатно добавили пакет безопасности!")
+protocol SpecialOffer {
+    // ! не принимает никаких параметров
+    // ! добавляет аптечку и огнетушитель к доп. оборудованию машины.
+    func addEmergencyPack(_ : inout Car)
+    // ! не принимает никаких параметров
+    // ! проверяет дату выпуска авто, если год выпуска машины меньше текущего, нужно сделать скидку 15%, а также добавить аптеку и огнетушитель.
+    func makeSpecialOffer()
+}
+// ! Используя расширение, реализуйте протокол 'SpecialOffer' для любых трех дилерских центров.
+extension DealershipSalonBMW: SpecialOffer{
+    func addEmergencyPack(_ car: inout Car) {
+        print("Adding emergecy pack", emergencyPack)
+        car.accessories = car.accessories.union(emergencyPack)
+        print("А ещё мы бесплатно добавили пакет безопасности! Вот:", car.accessories)
     }
-
-    // проверяет дату выпуска авто, если год выпуска машины меньше текущего, нужно сделать скидку 15%, а также добавить аптеку и огнетушитель.
     func makeSpecialOffer() {
+        print("SpecialOffer")
         for var car in cars {
+            // print(car)
             let date = Date()
             if car.buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) {
                 print("Найден автомобиль с годом выпуска машины меньше текущего: ", car.buildDate)
                 print("Его стараня цена: ", car.price)
                 car.price = UInt32(Double(car.price) * 0.85)
                 print("Его новыя цена: ", car.price)
+                addEmergencyPack(&car)
 
-                cars[0].addEmergencyPack()
+                // ! Если есть машины со скидкой на складе, нужно перегнать их в автосалон.
+                if salon.stockCars.first(where: {$0.color == car.color}) != nil {
+                if salon.stockCars.first(where: {$0.color == car.color}) != nil {
+                    print("Машина на паркове склада. Забираем её со стоянки.")
+                    //        if showroomCars.count >= showroomCapacity {
+                    //            print("Салон переполнен! Перегоняем первую машину из салона на парковку")
+                    //            stockCars.append(showroomCars.removeFirst())
+                    //        }
+                    //        addToShowroom(&car)
+                    //    }
+                    //    // теперь автомобиль точно есть в салоне
+                }
             }
         }
     }
 }
-dealerships.forEach {
-    if let dealership = $0 as? DealershipSalonBMW {
-        dealership.makeSpecialOffer()
-//    } else if let dealership = $0 as? DealershipSalonHonda {
-//        dealership.makeSpecialOffer()
+extension DealershipSalonHonda: SpecialOffer{
+    func addEmergencyPack(_: inout Car) {
+        print("Adding emergecy pack", emergencyPack)
+    }
+
+    func makeSpecialOffer() {
+        print("SpecialOffer")
+    }
+}
+extension DealershipSalonVolvo: SpecialOffer{
+    func addEmergencyPack(_: inout Car) {
+        print("Adding emergecy pack", emergencyPack)
+    }
+
+    func makeSpecialOffer() {
+        print("SpecialOffer")
     }
 }
 
+// ! Проверьте все машины в дилерском центре (склад + автосалон), возможно они нуждаются в специальном предложении.
+for (_, dealership) in dealershipBrands {
+    if let salon = dealership as? DealershipSalonBMW {
+        salon.makeSpecialOffer()
+    } else if let salon = dealership as? DealershipSalonHonda {
+        salon.makeSpecialOffer()
+    } else if let salon = dealership as? DealershipSalonVolvo {
+        salon.makeSpecialOffer()
+    }
+}
+
+//for (vin, brand1, color1, buildDate, price, accessories) in salon.stockCars {
+
+//dealershipBrands.forEach { (brand: Ca, salon: DealershipSalon) in
+//    dealerships += [salon]
+
+//func addToShowroom(_ car: inout Car) {
+//    print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.brand, car.color)
+//    guard stockCars.contains(where: {$0.color == car.color}) else {
+//        print("На парковке салона такого автомобиля нет")
+//        return
+//    }
+//    showroomCars.append(car)
+//    stockCars.removeAll(where: {$0.color == car.color})
+//    print("Автомобиль переставлен в салон")
+//
+//    presaleService(&car)
+//}
+//
+//func sellCar(_ car: inout Car) {
+//    if showroomCars.first(where: {$0.color == car.color}) == nil {
+//        print("Машины в салне нет. Забираем её со стоянки.") // вариант, что машина в салоне есть, а её нет ни салоне, ни на парковке не должен случаться вообще.
+//        if showroomCars.count >= showroomCapacity {
+//            print("Салон переполнен! Перегоняем первую машину из салона на парковку")
+//            stockCars.append(showroomCars.removeFirst())
+//        }
+//        addToShowroom(&car)
+//    }
+//    // теперь автомобиль точно есть в салоне
