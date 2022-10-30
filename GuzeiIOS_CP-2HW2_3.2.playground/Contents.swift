@@ -12,10 +12,7 @@ import Foundation
 
 let line = "\n" + String(repeating: "-" as Character, count: 80) + "\n"
 
-// MARK: - масштабируемость и масштабируемость
-
-// не привязаны к конкретному году
-//let curentYear = Calendar.current.component(.year, from: Date())
+// MARK: - расширяемость и масштабируемость
 
 // enum не позволяет ошибиться в названии и позволяет расширять автобренды
 enum CarBrands: String, CaseIterable {
@@ -30,6 +27,11 @@ enum Palette: CaseIterable {
 // Для аксессуаров будем использовать Set, т.к. это удобно для сравнения и дополнения.
 // Задачу можно сделать веселее задав разный набор аксессуаров разным брендам и/или салонам.
 let allAccessories: Set<String> = ["toning", "signaling", "sportsDiscs", "firstAidKit", "fireExtinguisher"]
+
+// Производственные планы для заводов. Это масштабируемость
+let countCarsInFactory: [CarBrands : UInt32] = [.BMW : 5, .Honda : 2, .Audi : 3, .Lexus : 3, .Volvo: 7]
+
+// Можно задавать заводские цены и предустановленный набор акксесуаров, но без кодогенерации это уж очень много ручного труда. Надо ли?
 
 
 // MARK: - Часть 1.
@@ -123,12 +125,15 @@ protocol CarMakingDelegate {
 
 struct BmwFactory: CarMakingDelegate {
     func makeCar(color: Palette) -> BrandCar {
-        return BrandCar(vin: UUID.init(), brand: .BMW, color: color, buildDate: Date(), price: 20_000, accessories: ["toning", "signaling", "sportsDiscs"])
+        // в четвёртой части понадобятся прошлогодние автомобили
+        var date = Calendar.current.date(byAdding: .year, value: Int.random(in: -1...0), to: Date())!
+        return BrandCar(vin: UUID.init(), brand: .BMW, color: color, buildDate: date, price: 20_000, accessories: ["toning", "signaling", "sportsDiscs"])
     }
 }
 struct HondaFactory: CarMakingDelegate {
     func makeCar(color: Palette) -> BrandCar {
-        return BrandCar(vin: UUID.init(), brand: .Honda, color: color, buildDate: Date(), price: 15_000, accessories: ["signaling", "sportsDiscs"])
+        var date = Calendar.current.date(byAdding: .year, value: Int.random(in: -1...0), to: Date())!
+        return BrandCar(vin: UUID.init(), brand: .Honda, color: color, buildDate: date, price: 15_000, accessories: ["signaling", "sportsDiscs"])
     }
 }
 struct AudiFactory: CarMakingDelegate {
@@ -148,11 +153,11 @@ struct VolvoFactory: CarMakingDelegate {
 }
 
 // А вот и сами заводы
-let bmwFactory = BmwFactory()
-let hondaFactory = HondaFactory()
-let audiFactory = AudiFactory()
-let lexusFactory = LexusFactory()
-let volvoFactory = VolvoFactory()
+var factiries: [CarBrands : CarMakingDelegate] = [.BMW   : BmwFactory(),
+                                                  .Honda : HondaFactory(),
+                                                  .Audi  : AudiFactory(),
+                                                  .Lexus : LexusFactory(),
+                                                  .Volvo : VolvoFactory()]
 
 // Да, трейдеры они такие. Скупают всё. Потом по салонам развезут.
 struct Trader {
@@ -168,34 +173,16 @@ struct Trader {
 }
 
 var trader = Trader()
-// Тредер делат заказ автомобилей на разнх заводах.
-for _ in 1...50 {
-    if let color = Palette.allCases.randomElement() {
-        trader.orderCar(facroty: bmwFactory, color: color)
-    }
-}
-for _ in 1...20 {
-    if let color = Palette.allCases.randomElement() {
-        trader.orderCar(facroty: hondaFactory, color: color)
-    }
-}
-for _ in 1...25 {
-    if let color = Palette.allCases.randomElement() {
-        trader.orderCar(facroty: audiFactory, color: color)
-    }
-}
-for _ in 1...200 {
-    if let color = Palette.allCases.randomElement() {
-        trader.orderCar(facroty: lexusFactory, color: color)
-    }
-}
-for _ in 1...33 {
-    if let color = Palette.allCases.randomElement() {
-        trader.orderCar(facroty: volvoFactory, color: color)
+// Тредер делат заказ автомобилей на всех заводах.
+CarBrands.allCases.forEach { brand in
+    for _ in 1...countCarsInFactory[brand]! {
+        if let color = Palette.allCases.randomElement() {
+            trader.orderCar(facroty: factiries[brand]!, color: color)
+        }
     }
 }
 
-trader.cars.count // 125 автомоблией сделаны
+print("Количество автомобилей всех марок заказанных трейдером: ", trader.cars.count )
 
 
 // ! Используя классы
@@ -210,7 +197,7 @@ class DealershipSalon: Dealership {
     var showroomCars: [Car] = [] // машины, находящиеся в автосалоне. Учесть лимит showroomCapacity
     var cars: [Car] = [] // хранит список всех машин в наличии
     var factory: CarMakingDelegate?
-    var sellColor: Palette = .red // ну уж очень устал, чтобы делать опционал. Сорри. Это не на что не влияет, т.к. будет использоваться после продажи.
+    private var sellColor: Palette = .red // ну уж очень устал, чтобы делать опционал. Сорри. Это не на что не влияет, т.к. будет использоваться после продажи.
 
     init(name: CarBrands, showroomCapacity: UInt16) {
         self.name = name
@@ -364,25 +351,34 @@ final class DealershipSalonVolvo: DealershipSalon {
 
 // ! создайте пять различных дилерских центров (например BMW, Honda, Audi, Lexus, Volvo). Все они должны реализовать протокол 'Dealership'.
 // протокол реализуется через класс
-var dealershipBMW   = DealershipSalonBMW(factory: bmwFactory)
-var dealershipHonda = DealershipSalonHonda(factory: hondaFactory)
-var dealershipAudi  = DealershipSalonAudi(factory: audiFactory)
-var dealershipLexus = DealershipSalonLexus(factory: lexusFactory)
-var dealershipVolvo = DealershipSalonVolvo(factory: volvoFactory)
+var dealershipBMW   = DealershipSalonBMW(factory: factiries[.BMW]!)
+var dealershipHonda = DealershipSalonHonda(factory: factiries[.Honda]!)
+var dealershipAudi  = DealershipSalonAudi(factory: factiries[.Audi]!)
+var dealershipLexus = DealershipSalonLexus(factory: factiries[.Lexus]!)
+var dealershipVolvo = DealershipSalonVolvo(factory: factiries[.Volvo]!)
+
+let dealershipBrands: [CarBrands : DealershipSalon] = [.BMW   : dealershipBMW,
+                                                       .Honda : dealershipHonda,
+                                                       .Audi  : dealershipAudi,
+                                                       .Lexus : dealershipLexus,
+                                                       .Volvo : dealershipVolvo]
 
 // ! Каждому дилерскому центру добавьте машин на парковку и в автосалон (используйте те машины, которые создали ранее).
 // Автосалон при получении автомобиля назначает ему стоимость и даёт от 1 до 3 аксессуара на удачу. Если случайная величина совпадёт, то будет менее трёх аксессуаров.
 
 // Трейдер раставляет автомобили по салонам
-trader.cars.forEach { (_: UUID, car: Car) in
+trader.cars.forEach { (vin: UUID, car: Car) in
     switch car.brand {
     case .BMW:
+        dealershipBrands[.BMW]?.cars.append(car)
         dealershipBMW.cars.append(car)
         if car.color == .red  &&  dealershipBMW.showroomCars.count < dealershipBMW.showroomCapacity {
             dealershipBMW.showroomCars.append(car)
         } else {
             dealershipBMW.stockCars.append(car)
         }
+        // удалять машины у тейдера, по условию этой задачи можно было бы сразу все, но так культурнее.
+        trader.cars[vin] = nil
     case .Honda:
         dealershipHonda.cars.append(car)
         if car.color != .red  &&  dealershipHonda.showroomCars.count < dealershipHonda.showroomCapacity {
@@ -390,6 +386,7 @@ trader.cars.forEach { (_: UUID, car: Car) in
         } else {
             dealershipHonda.stockCars.append(car)
         }
+        trader.cars[vin] = nil
     case .Audi:
         dealershipAudi.cars.append(car)
         if dealershipAudi.showroomCars.count < dealershipAudi.showroomCapacity {
@@ -397,6 +394,7 @@ trader.cars.forEach { (_: UUID, car: Car) in
         } else {
             dealershipAudi.stockCars.append(car)
         }
+        trader.cars[vin] = nil
     case .Lexus:
         dealershipLexus.cars.append(car)
         if dealershipLexus.showroomCars.count < dealershipLexus.showroomCapacity {
@@ -404,6 +402,7 @@ trader.cars.forEach { (_: UUID, car: Car) in
         } else {
             dealershipLexus.stockCars.append(car)
         }
+        trader.cars[vin] = nil
     case .Volvo:
         dealershipVolvo.cars.append(car)
         if dealershipVolvo.showroomCars.count < dealershipVolvo.showroomCapacity {
@@ -411,12 +410,19 @@ trader.cars.forEach { (_: UUID, car: Car) in
         } else {
             dealershipVolvo.stockCars.append(car)
         }
+        trader.cars[vin] = nil
     }
 }
-dealershipBMW.cars // для контроля
+
+print("Количество автомобилей переданнх в диллерский центр БМВ: ", dealershipBMW.cars.count)
+print("Количество автомобилей переданнх в диллерский центр Хонда: ", dealershipHonda.cars.count)
+print("Количество автомобилей переданнх в диллерский центр Ауди: ", dealershipAudi.cars.count)
+print("Количество автомобилей переданнх в диллерский центр Лексус: ", dealershipLexus.cars.count)
+print("Количество автомобилей переданнх в диллерский центр Вольво: ", dealershipVolvo.cars.count)
+print("Количество автомоблией оставшихся у трейдера: ", trader.cars.count)
 
 // Пришёл покупатель за чёрным бумером, а такой цвет отсутствует в списке цветов у менеджера и даже проверок делать не надо.
-// Пришёл покупатель на красную БМВ.
+print("Пришёл покупатель на красную БМВ.")
 var color = Palette.red
 var car = dealershipBMW.availabilityCheck(color: color)
 if car == nil {
@@ -425,6 +431,7 @@ if car == nil {
     dealershipBMW.sellCar(&car!)
 }
 print(line)
+print("Пришёл покупатель на синию Вольво.")
 color = .blue
 car = dealershipVolvo.availabilityCheck(color: color)
 if car == nil {
@@ -434,14 +441,14 @@ if car == nil {
 }
 
 // ! Создайте массив, положите в него созданные дилерские центры.
-var Dealerships = [Dealership]()
-Dealerships = [dealershipBMW, dealershipHonda, dealershipAudi, dealershipLexus, dealershipVolvo]
+var dealerships = [Dealership]()
+dealerships = [dealershipBMW, dealershipHonda, dealershipAudi, dealershipLexus, dealershipVolvo]
 
 // ! Пройдитесь по нему циклом и выведите в консоль слоган для каждого дилеского центра (слоган можно загуглить).
 // ! Обратите внимание! Используйте конструкцию приведения типа данных для решения этой задачи.
 // Dealerships[0].slogan -- у суперкласса нет слогана, поэтому идём на ступень ниже:
 print("\n", line, "Слоганы автосалонов:")
-Dealerships.forEach {
+dealerships.forEach {
     if let car = $0 as? DealershipSalonBMW {
         print($0.name, "-", car.slogan)
     } else if let car = $0 as? DealershipSalonHonda {
@@ -455,7 +462,7 @@ Dealerships.forEach {
     }
 }
 
-
+print(line)
 // MARK: - Часть 4.
 /*
  Работа с расширениями. Нам нужно добавить спецпредложение для "прошлогодних" машин.
@@ -469,26 +476,43 @@ Dealerships.forEach {
 
  Используя расширение, реализуйте протокол 'SpecialOffer' для любых трех дилерских центров.
  Проверьте все машины в дилерском центре (склад + автосалон), возможно они нуждаются в специальном предложении. Если есть машины со скидкой на складе, нужно перегнать их в автосалон.
- */
-//protocol SpecialOffer {
-//    func addEmergencyPack() // добавляет аптечку и огнетушитель к доп. оборудованию машины.
-//    func makeSpecialOffer() // проверяет дату выпуска авто, если год выпуска машины меньше текущего, нужно сделать скидку 15%, а также добавить аптеку и огнетушитель.
-//}
-//
-//let emergencyPack: Set<String> = ["firstAidKit", "fireExtinguisher"]
-//
-//extension DealershipSalonBMW: SpecialOffer {
-//
-//    func addEmergencyPack() {
-//        accessuare.uppend(emergencyPack)
-//    }
-//
-//    func makeSpecialOffer() {
-//        cars.forEach{
-//            if $0.buildDate == 2021 {
-//                $0.price = UInt32(Double($0.price) * 0.85)
-//                addEmergencyPack()
-//            }
-//        }
-//    }
-//}
+*/
+
+protocol SpecialOffer {
+    func addEmergencyPack()
+    func makeSpecialOffer()
+}
+
+let emergencyPack: Set<String> = ["firstAidKit", "fireExtinguisher"]
+
+extension DealershipSalonBMW: SpecialOffer {
+
+    // добавляет аптечку и огнетушитель к доп. оборудованию машины.
+    func addEmergencyPack() {
+//        car.accessuare.uppend(emergencyPack)
+        print("А ещё мы бесплатно добавили пакет безопасности!")
+    }
+
+    // проверяет дату выпуска авто, если год выпуска машины меньше текущего, нужно сделать скидку 15%, а также добавить аптеку и огнетушитель.
+    func makeSpecialOffer() {
+        for var car in cars {
+            let date = Date()
+            if car.buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) {
+                print("Найден автомобиль с годом выпуска машины меньше текущего: ", car.buildDate)
+                print("Его стараня цена: ", car.price)
+                car.price = UInt32(Double(car.price) * 0.85)
+                print("Его новыя цена: ", car.price)
+
+                cars[0].addEmergencyPack()
+            }
+        }
+    }
+}
+dealerships.forEach {
+    if let dealership = $0 as? DealershipSalonBMW {
+        dealership.makeSpecialOffer()
+//    } else if let dealership = $0 as? DealershipSalonHonda {
+//        dealership.makeSpecialOffer()
+    }
+}
+
