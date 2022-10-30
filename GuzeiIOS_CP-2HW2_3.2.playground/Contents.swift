@@ -12,6 +12,7 @@ import Foundation
 
 let line = "\n" + String(repeating: "-" as Character, count: 80) + "\n"
 
+
 // MARK: - расширяемость и масштабируемость
 
 // enum не позволяет ошибиться в названии и позволяет расширять автобренды
@@ -28,7 +29,7 @@ enum Palette: CaseIterable {
 // Задачу можно сделать веселее задав разный набор аксессуаров разным брендам и/или салонам.
 let allAccessories: Set<String> = ["toning", "signaling", "sportsDiscs", "firstAidKit", "fireExtinguisher"]
 
-// Производственные планы для заводов. Это масштабируемость
+// Производственные планы для заводов. Это масштабируемость. Можно и сотни и тысячи поставить. Сколько комп.выдержит :)
 let countCarsInFactory: [CarBrands : UInt32] = [.BMW : 8, .Honda : 2, .Audi : 3, .Lexus : 3, .Volvo: 7]
 
 // Можно задавать заводские цены и предустановленный набор акксесуаров, но без кодогенерации это уж очень много ручного труда. Надо ли?
@@ -48,7 +49,7 @@ let countCarsInFactory: [CarBrands : UInt32] = [.BMW : 8, .Honda : 2, .Audi : 3,
 protocol Car {
 
     var vin: UUID { get }
-    var brand: CarBrands { get }
+    var model: CarBrands { get }
     var color: Palette { get }
     var buildDate: Date { get }
     var price: UInt32 { get set } // без копеек обойдёмся
@@ -105,7 +106,7 @@ protocol Dealership {
 struct BrandCar: Car {
 
     var vin: UUID
-    var brand: CarBrands
+    var model: CarBrands
     var color: Palette
     var buildDate: Date
     var price: UInt32
@@ -127,28 +128,28 @@ struct BmwFactory: CarMakingDelegate {
     func makeCar(color: Palette) -> BrandCar {
         // в четвёртой части понадобятся прошлогодние автомобили
         var date = Calendar.current.date(byAdding: .year, value: Int.random(in: -1...0), to: Date())!
-        return BrandCar(vin: UUID.init(), brand: .BMW, color: color, buildDate: date, price: 20_000, accessories: ["toning", "signaling", "sportsDiscs"])
+        return BrandCar(vin: UUID.init(), model: .BMW, color: color, buildDate: date, price: 20_000, accessories: ["toning", "signaling", "sportsDiscs"])
     }
 }
 struct HondaFactory: CarMakingDelegate {
     func makeCar(color: Palette) -> BrandCar {
         var date = Calendar.current.date(byAdding: .year, value: Int.random(in: -1...0), to: Date())!
-        return BrandCar(vin: UUID.init(), brand: .Honda, color: color, buildDate: date, price: 15_000, accessories: ["signaling", "sportsDiscs"])
+        return BrandCar(vin: UUID.init(), model: .Honda, color: color, buildDate: date, price: 15_000, accessories: ["signaling", "sportsDiscs"])
     }
 }
 struct AudiFactory: CarMakingDelegate {
     func makeCar(color: Palette) -> BrandCar {
-        return BrandCar(vin: UUID.init(), brand: .Audi, color: color, buildDate: Date(), price: 19_000, accessories: ["sportsDiscs"])
+        return BrandCar(vin: UUID.init(), model: .Audi, color: color, buildDate: Date(), price: 19_000, accessories: ["sportsDiscs"])
     }
 }
 struct LexusFactory: CarMakingDelegate {
     func makeCar(color: Palette) -> BrandCar {
-        return BrandCar(vin: UUID.init(), brand: .Lexus, color: color, buildDate: Date(), price: 21_000, accessories: ["toning", "signaling"])
+        return BrandCar(vin: UUID.init(), model: .Lexus, color: color, buildDate: Date(), price: 21_000, accessories: ["toning", "signaling"])
     }
 }
 struct VolvoFactory: CarMakingDelegate {
     func makeCar(color: Palette) -> BrandCar {
-        return BrandCar(vin: UUID.init(), brand: .Volvo, color: color, buildDate: Date(), price: 21_000, accessories: ["signaling"])
+        return BrandCar(vin: UUID.init(), model: .Volvo, color: color, buildDate: Date(), price: 21_000, accessories: ["signaling"])
     }
 }
 
@@ -172,16 +173,18 @@ struct Trader {
     }
 }
 
-// Тредер делат заказ автомобилей на всех заводах.
+// Трейдер делат заказ автомобилей на всех заводах.
 var trader = Trader()
-CarBrands.allCases.forEach { brand in
-    for _ in 1...countCarsInFactory[brand]! {
+CarBrands.allCases.forEach { model in
+    for _ in 1...countCarsInFactory[model]! {
         if let color = Palette.allCases.randomElement() {
-            if let factory = factories[brand] {
+            if let factory = factories[model] {
                 trader.orderCar(facroty: factory, color: color)
             } else {
-                print("Нет фабрики для бренда: ", brand)
+                print("Нет фабрики для бренда: ", model)
             }
+        } else {
+            print("Странно... цвета в палитре не нашлось")
         }
     }
 }
@@ -239,14 +242,14 @@ class DealershipSalon: Dealership {
             print("Предпродажная подготовка не требуется")
             return
         }
-        print("\tНа предпродажную подготовку поступил автомобиль", car.brand, car.color)
+        print("\tНа предпродажную подготовку поступил автомобиль", car.model, car.color)
         car.isServiced = true
         print("Предпродажная подготовка произведена")
     }
 
     // ! принимает машину в качестве параметра. Метод перегоняет машину с парковки склада в автосалон, при этом выполняет предпродажную подготовку.
     func addToShowroom(_ car: inout Car) {
-        print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.brand, car.color)
+        print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.model, car.color)
         guard stockCars.contains(where: {$0.color == car.color}) else {
             print("На парковке салона такого автомобиля нет")
             return
@@ -261,7 +264,7 @@ class DealershipSalon: Dealership {
     // ! принимает машину в качестве параметра. Метод продает машину из автосалона при этом проверяет, выполнена ли предпродажная подготовка. Также, если у машины отсутсвует доп. оборудование, нужно предложить клиенту его купить. (давайте представим, что клиент всегда соглашается и покупает :) )
     func sellCar(_ car: inout Car) {
         // если автомобиля вообще нет в салоне, то проверки сюда не попасть. Проверка перед вызовом.
-        print("\tПродаём автомобиль", car.brand, car.color)
+        print("\tПродаём автомобиль", car.model, car.color)
         if showroomCars.first(where: {$0.color == car.color}) == nil {
             print("Машины в салне нет. Забираем её со стоянки.") // вариант, что машина в салоне есть, а её нет ни салоне, ни на парковке не должен случаться вообще.
             if showroomCars.count >= showroomCapacity {
@@ -370,7 +373,7 @@ dealershipBrands[.Volvo] = DealershipSalonVolvo(factory: factories[.Volvo]!)
 
 // Трейдер раставляет автомобили по салонам
 for (vin, car) in trader.cars {
-    if let salon = dealershipBrands[car.brand] {
+    if let salon = dealershipBrands[car.model] {
         salon.cars.append(car)
         // ставим автомобили в салон по цвету, но не более, чем мест в салоне.
         if car.color == Palette.allCases.randomElement()  &&  salon.showroomCars.count < salon.showroomCapacity {
@@ -380,19 +383,19 @@ for (vin, car) in trader.cars {
         }
         trader.cars[vin] = nil // просто перестаить экземпляр структуры не знаю как. Получается делаем копию в салон, а потом удаляем у трейдера.
     } else {
-        print("Для марки \(car.brand) не нашлось салона")
+        print("Для марки \(car.model) не нашлось салона")
     }
 }
-dealershipBrands.forEach { (brand: CarBrands, salon: DealershipSalon) in
-    print("Количество автомобилей переданнх в диллерский центр \(brand)): ", salon.cars.count)
+dealershipBrands.forEach { (model: CarBrands, salon: DealershipSalon) in
+    print("Количество автомобилей переданнх в диллерский центр \(model)): ", salon.cars.count)
 }
 print("Количество автомоблией оставшихся у трейдера: ", trader.cars.count)
 
 // Пришёл покупатель за чёрным бумером, а такой цвет отсутствует в списке цветов у менеджера и даже проверок делать не надо.
 print("\n\nПокупатель пришёлв свлон БМВ за красной машиной.")
 // Покупатель в салоне, значит салон точно есть! (иначе можно и проверку сделать)
-var brand = CarBrands.BMW
-var salon = dealershipBrands[brand]!
+var model = CarBrands.BMW
+var salon = dealershipBrands[model]!
 salon.sellColor = .red
 var car = salon.availabilityCheck()
 if car == nil {
@@ -402,8 +405,8 @@ if car == nil {
 }
 print(line)
 print("В салон Вольво пришёл покупатель на синей машиной.")
-brand = CarBrands.Volvo
-salon = dealershipBrands[brand]!
+model = CarBrands.Volvo
+salon = dealershipBrands[model]!
 salon.sellColor = .blue
 car = salon.availabilityCheck()
 if car == nil {
