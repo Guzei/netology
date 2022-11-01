@@ -51,7 +51,7 @@ struct BrandCar: Car {
     var isServiced: Bool = false
 
     mutating func buyingAccessories() {
-        accessories = allAccessories
+         accessories = allAccessories
     }
 }
 
@@ -314,11 +314,10 @@ print(line)
 
 // ! 1. Внесите изменения в метод 'makeSpecialOffer()' таким образом, чтобы он возвращал ошибку, если машина не соответствует требованиям акции.
 protocol SpecialOffer {
-    func makeSpecialOffer(vin: UUID) throws
+    func makeSpecialOffer(_ index: Int) throws
 }
 
 enum ErrorSpecialOffer: Error {
-    case noCar
     case year(_ year: String)
 }
 
@@ -328,25 +327,23 @@ enum ErrorSpecialOffer: Error {
 
 extension DealershipSalonBMW: SpecialOffer {
 
-    func makeSpecialOffer(vin: UUID) throws {
+    func makeSpecialOffer(_ index: Int) throws {
         print("\tSpecialOffer")
-        guard var car = cars.first(where: {$0.vin == vin }) else {
-            throw ErrorSpecialOffer.noCar
-        }
         let date = Date()
-        guard car.buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) else {
+        guard cars[index].buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) else {
             throw ErrorSpecialOffer.year(date.formatted(.dateTime.year()))
         }
         // ! 2. В случае, если нет ошибки, сделайте для этой машины специальное предложение.
-        print("Good: Автомобиль с годом выпуска машины меньше текущего: ", car.buildDate, ", что соответствует условия акции.")
-        car.price = car.price * 85 / 100
+        print("Good: Автомобиль с годом выпуска машины меньше текущего: ", cars[index].buildDate, ", что соответствует условия акции.")
+        cars[index].price = cars[index].price * 85 / 100
     }
     // ! 3. Проверьте текущий список машин, чтобы при проверке генерировались ошибки. При необходимости, внесите изменения.
     // ! 4. Обработайте ошибки.
     func makeSpecialOfferForAllCars() {
-        cars.forEach { car in
-            do { try makeSpecialOffer(vin: car.vin) }
-            catch ErrorSpecialOffer.noCar {print("Автомобиль не найден")}
+        for i in 0..<cars.count { // если брать автомбиль, то создаётся новый экземпляр (структура) и все изменения будут в нём. Данные в салоне не меняются.
+            do { try makeSpecialOffer(i);
+                print("Предложение принято! Цена:", cars[i].price)
+            }
             catch ErrorSpecialOffer.year(let year) {print("Error: Автомобиль имеет год __", year, "__ что не соответствуе условию акции")}
             catch {print("Error: ?")}
         }
@@ -354,7 +351,12 @@ extension DealershipSalonBMW: SpecialOffer {
 }
 
 // для разнообразия раскроем не как в прошлом ДЗ
-(dealershipBrands[.BMW] as! DealershipSalonBMW).makeSpecialOfferForAllCars()
+var salonBMW = dealershipBrands[.BMW] as! DealershipSalonBMW
+salonBMW.makeSpecialOfferForAllCars()
+print("Контрольная печать")
+salonBMW.cars.forEach { car in
+    print(car.price)
+}
 
 
 /* MARK: - Задача №2
@@ -365,38 +367,37 @@ extension DealershipSalonBMW: SpecialOffer {
 print(line)
 
 protocol CarToSalon {
-    func toSalon(vin: UUID) throws
+    func toSalon(_ index: Int) throws  // по параметрам ограничений не было и упростил себе задачу, чтобы сконцентрироваться на диагностике.
 }
 
 enum ErrorCarToSalon: Error {
-    case noCar
     case into
 }
 
 extension DealershipSalonBMW: CarToSalon {
 
-    func toSalon(vin: UUID) throws {
-        print("\tCar to salon")
-        guard var car = cars.first(where: {$0.vin == vin }) else {
-            throw ErrorCarToSalon.noCar
-        }
-        if showroomCars.contains(where: {$0.vin == vin}) {
-            let date = Date()
-            guard car.buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) else {
-                throw ErrorCarToSalon.into
-            }
-        }
-        addToShowroom(&car)
+   func toSalon(_ index: Int) throws {
+       print("\tCar to salon")
+
+       let date = Date()
+       if cars[index].buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) {
+           guard !showroomCars.contains(where: {$0.vin == cars[index].vin}) else {
+               throw ErrorCarToSalon.into
+           }
+           var car = cars[index]
+           addToShowroom(&car)
+       } else {
+           print("Error? No! Машина без скидки") // тоже просится в throw, но этого нет в условии задачи
+       }
     }
 
     func carsToSalon() {
-        cars.forEach { car in
-            do { try toSalon(vin: car.vin)}
-            catch ErrorCarToSalon.noCar {print("Erro: Автомобиль не найден")}
-            catch ErrorCarToSalon.into  {print("Error: Автомобиль уже в салоне")}
+        for i in 0..<cars.count {
+            do { try toSalon(i)}
+            catch ErrorCarToSalon.into  {print("Error: машина цвета \(cars[i].color) со скидкой  \(cars[i].price) уже находится в автосалоне.", cars[i].buildDate)}
             catch {print("Error: ?")}
         }
     }
 }
 
-(dealershipBrands[.BMW] as! DealershipSalonBMW).carsToSalon()
+salonBMW.carsToSalon()
