@@ -1,55 +1,402 @@
-/*
- Обработка ошибок
+import Foundation
 
- В этом задании вам потребуется вернуться к предыдущей домашней работе, в которой вы создавали ПО для дилерских центров.
+let line = "\n" + String(repeating: "-" as Character, count: 80) + "\n"
 
- Задача №1
+enum CarBrands: String, CaseIterable { case BMW, Honda, Audi, Lexus, Volvo }
+enum Palette:   CaseIterable         { case red, green, blue }
 
- Алгоритм выполнения
+let allAccessories: Set<String> = ["toning", "signaling", "sportsDiscs", "firstAidKit", "fireExtinguisher"]
+let countCarsInFactory: [CarBrands : UInt32] = [.BMW : 8, .Honda : 2, .Audi : 3, .Lexus : 3, .Volvo: 7]
 
- Внесите изменения в метод 'makeSpecialOffer()' таким образом, чтобы он возвращал ошибку, если машина не соответствует требованиям акции.
- В случае, если нет ошибки, сделайте для этой машины специальное предложение.
- Проверьте текущий список машин, чтобы при проверке генерировались ошибки. При необходимости, внесите изменения.
- Обработайте ошибки.
+protocol Car {
 
- Задача №2
+    var vin: UUID { get }
+    var model: CarBrands { get }
+    var color: Palette { get }
+    var buildDate: Date { get }
+    var price: UInt32 { get set }
+    var accessories: Set<String> { get set }
+    var isServiced: Bool { get set }
 
- Алгоритм выполнения
+    mutating func buyingAccessories()
+}
 
- Перейдите к той части кода, где вы выполняли следующее задание: "Проверьте все машины в дилерском центре (склад + автосалон), возможно они нуждаются в специальном предложении. Если есть машины со скидкой на складе, нужно перегнать их в автосалон."
- Аналогично первой задаче, внесите изменения в код таким образом, чтобы осуществлялся возврат ошибки в том случае, если машина со скидкой уже находится в автосалоне. В том случае, если ошибки нет, нужно перегнать машину в автосалон.
- Проверьте текущий список машин, чтобы при проверке генерировались ошибки. При необходимости, внесите изменения.
- Обработайте ошибки.
+protocol Dealership {
 
- Задача 3 * (задача со звездочкой, дополнительная)
+    var name: CarBrands { get }
+    var showroomCapacity: UInt16 { get }
+    var stockCars: [Car] { get set }
+    var showroomCars: [Car] { get set }
+    var cars: [Car] { get set }
 
- Это последнее домашнее задание в модуле "Продвинутые основы Swift". Эта задача поможет вам закрепить все темы, изученные в модулях с основами Swift, и перейти далее, непосредственно к процессу разработки.
+    func offerAccessories(_ : [String])
+    func presaleService(_ : inout Car)
+    func addToShowroom(_ : inout Car)
+    func sellCar(_ : inout Car)
+    func orderCar()
+}
 
- Часть 1
+struct BrandCar: Car {
 
- Детально ознакомьтесь с проектом, посмотрите все файлы и научитесь запускать проект. Расширьте протокол Weapons (например, закоментированное свойство) и используйте его по назначению, например, в расчете попал/не попал. Или вы можете расширить новый метод, который как-то влияет на поведение оружия.
+    var vin: UUID
+    var model: CarBrands
+    var color: Palette
+    var buildDate: Date
+    var price: UInt32 {
+        didSet {
+            print("Цена изменилась. Было: \(oldValue), стало: \(price)")
+        }
+    }
+    var accessories: Set<String>
+    var isServiced: Bool = false
 
- Алгоритм выполнения
+    mutating func buyingAccessories() {
+        accessories = allAccessories
+    }
+}
 
- Раскомментируйте код со свойством, добавьте новое свойство или новый метод;
- Напишите комментарий, для каких целей вы расширили протокол;
- Добавьте необходимые поля или методы для реализации обновленного протокола;
- Найдите, где используются сущности, реализующие протокол Weapons;
- Придумайте, каким образом их можно применить для найденных участков кода;
- Запустите и понаблюдайте за тем, каким образом изменится ход "сражения".
+protocol CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar
+}
 
- Часть 2
+struct BmwFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        var date = Calendar.current.date(byAdding: .year, value: Int.random(in: -1...0), to: Date())!
+        return BrandCar(vin: UUID.init(), model: .BMW, color: color, buildDate: date, price: 20_000, accessories: ["toning", "signaling", "sportsDiscs"])
+    }
+}
+struct HondaFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        var date = Calendar.current.date(byAdding: .year, value: Int.random(in: -1...0), to: Date())!
+        return BrandCar(vin: UUID.init(), model: .Honda, color: color, buildDate: date, price: 15_000, accessories: ["signaling", "sportsDiscs"])
+    }
+}
+struct AudiFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        return BrandCar(vin: UUID.init(), model: .Audi, color: color, buildDate: Date(), price: 19_000, accessories: ["sportsDiscs"])
+    }
+}
+struct LexusFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        return BrandCar(vin: UUID.init(), model: .Lexus, color: color, buildDate: Date(), price: 21_000, accessories: ["toning", "signaling"])
+    }
+}
+struct VolvoFactory: CarMakingDelegate {
+    func makeCar(color: Palette) -> BrandCar {
+        return BrandCar(vin: UUID.init(), model: .Volvo, color: color, buildDate: Date(), price: 21_000, accessories: ["signaling"])
+    }
+}
 
- Измените ход игры любым способом (создайте новое оружие, улучшите систему оповещения, новый корабль или их количество);
- Напишите отчет о том, что вы поняли/в чем разобрались, выполняя это задание;
- Дайте оценку своему пониманию данной темы.
- Данное задание поможет вам лучше понять эту тему. В процессе написания отчета вы выявите слабые и сильные места в изучении данной темы, закроете пробелы или у вас появятся новые вопросы. При возникновении вопросов можете писать в чат учебной группы.
+var factories: [CarBrands : CarMakingDelegate] = [.BMW   : BmwFactory(),
+                                                  .Honda : HondaFactory(),
+                                                  .Audi  : AudiFactory(),
+                                                  .Lexus : LexusFactory(),
+                                                  .Volvo : VolvoFactory()]
 
- 
- Правила выполнения домашней работы:
+struct Trader {
 
- Задачу 1 и2 можно выполнить и сдать в файле .playground, подписанный в формате ФамилияГруппаHW3_3 (например, IvanovIOS6_HW3_3.playground). Файл нужно заархивировать и загрузить в личном кабинете в формате .zip
- Выполняйте задачу 3 в проекте, который лежит в папке StarWars for iOS. Готовый проект заархивируйте и загрузите в личном кабинете в формате .zip, подписанный в формате ФамилияГруппаHW3_4 (например, IvanovIOS5_HW3_4.zip).
- Все задачи обязательны к выполнению для получения зачета, кроме задач со звездочкой. Присылать на проверку можно каждую задачу по отдельности или все задачи вместе. Во время проверки по частям ваша домашняя работа будет со статусом "На доработке".
- Любые вопросы по решению задач задавайте в чате учебной группы (ссылку вы найдете в письме на вашей эл. почте).
- */
+    var factory: CarMakingDelegate?
+    var cars = [UUID : Car]()
+
+    mutating func orderCar(facroty: CarMakingDelegate, color: Palette) {
+        self.factory = facroty
+        let newCar = facroty.makeCar(color: color)
+        self.cars[newCar.vin] = newCar
+    }
+}
+
+print("Трейдер:\n- Заказываю автомобили на всех заводах!")
+var trader = Trader()
+CarBrands.allCases.forEach { model in
+    for _ in 1...countCarsInFactory[model]! {
+        if let color = Palette.allCases.randomElement() {
+            if let factory = factories[model] {
+                trader.orderCar(facroty: factory, color: color)
+            } else {
+                print("Нет фабрики для бренда: ", model)
+            }
+        } else {
+            print("Странно... цвета в палитре не нашлось")
+        }
+    }
+}
+print("Количество автомобилей всех марок заказанных трейдером: ", trader.cars.count )
+
+
+class DealershipSalon: Dealership {
+
+    var name: CarBrands
+    var showroomCapacity: UInt16
+    var stockCars: [Car] = [] {
+        didSet {
+            cars = stockCars + showroomCars
+        }
+    }
+    var showroomCars: [Car] = [] {
+        didSet {
+            cars = stockCars + showroomCars
+        }
+    }
+    var cars: [Car] = []
+    var factory: CarMakingDelegate?
+    var sellColor: Palette = .green // если покупатель сам не выбирает цвет, то предлагаем ему зелёную
+
+    init(name: CarBrands, showroomCapacity: UInt16) {
+        self.name = name
+        self.showroomCapacity = showroomCapacity
+    }
+
+    // предлагаем купить допы
+    func offerAccessories(_ accessories: [String]) {
+        guard !accessories.isEmpty else {
+            print("Задайте список возможных аксессуаров")
+            return
+        }
+        let requestedAccessories = Set(accessories)
+        let defunctAccessories = requestedAccessories.subtracting(allAccessories) // вычетание
+        if defunctAccessories.count > 0 {
+            print("\tЭтих аксессуаров несуществует:")
+            defunctAccessories.map{ print("- ",$0) }
+        }
+        var selectedAccessories = requestedAccessories.intersection(allAccessories) // Пересечение
+        if selectedAccessories.count > 0 {
+            print("\tПредалагаем купить следующие аксессары:")
+            selectedAccessories.forEach{ print("- ", $0) }
+        } else {
+            print("Не задано ни одного существующего аксессуара")
+        }
+    }
+
+    func presaleService(_ car: inout Car) {
+        guard !car.isServiced else {
+            print("Предпродажная подготовка не требуется")
+            return
+        }
+        print("\tНа предпродажную подготовку поступил автомобиль", car.model, car.color)
+        car.isServiced = true
+        print("Предпродажная подготовка произведена")
+    }
+
+    func addToShowroom(_ car: inout Car) {
+        print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.model, car.color)
+        guard stockCars.contains(where: {$0.vin == car.vin}) else {
+            print("На парковке салона такого автомобиля нет")
+            return
+        }
+        showroomCars.append(car)
+        stockCars.removeAll(where: {$0.vin == car.vin})
+        print("Автомобиль переставлен в салон")
+
+        presaleService(&car)
+    }
+
+    func sellCar(_ car: inout Car) {
+        print("\tПродаём автомобиль", car.model, car.color)
+        if showroomCars.first(where: {$0.vin == car.vin}) == nil { // тут была ошибка в коде
+            print("Машины в салне нет. Забираем её со стоянки.")
+            if showroomCars.count >= showroomCapacity {
+                print("Салон переполнен! Перегоняем первую машину из салона на парковку")
+                stockCars.append(showroomCars.removeFirst())
+            }
+            addToShowroom(&car)
+        }
+
+        presaleService(&car)
+
+        // формируем список нехватающих допов // allAccessories vs. car.accessories
+        let carAccessories = Set(car.accessories)
+        let newAccessories = allAccessories.subtracting(Set(car.accessories)) // это причина выбора множества.
+        if newAccessories.count > 0 {
+            offerAccessories(Array(newAccessories))
+            car.buyingAccessories()
+        } else {
+            print("Аксессуаров уже под завязку. Больше ничего предложить не можем.")
+        }
+
+        print(car.vin)
+        showroomCars.removeAll{ $0.vin == car.vin}
+        print("\tПродано!")
+
+        orderCar()
+    }
+
+    func orderCar() {
+        print("Салон \(name) заказывает себе новый автомобиль цвета \(sellColor)...")
+        guard let newCar = factory?.makeCar(color: sellColor) else {
+            print("Не удалость заказать автомобиль \(name) цвета \(sellColor) в салон")
+            return
+        }
+        stockCars.append(newCar)
+        print("Автомобиль успешно заказан на заводе \(factory!)")
+    }
+}
+
+// 2. классы диллерских центров по брендам
+final class DealershipSalonBMW: DealershipSalon {
+
+    let slogan = "Freude am Fahren" // С удовольствием за рулём
+
+    init(factory: CarMakingDelegate) {
+        super.init(name: .BMW, showroomCapacity: 100)
+        self.factory = factory
+    }
+}
+final class DealershipSalonHonda: DealershipSalon {
+
+    let slogan = "자동차에서 삶의 동반자로" // Сначала человек, потом машина
+
+    init(factory: CarMakingDelegate) {
+        super.init(name: .Honda, showroomCapacity: 200)
+        self.factory = factory
+    }
+}
+final class DealershipSalonAudi: DealershipSalon {
+
+    let slogan = "Vorsprung durch Technik" // Превосходство технологий
+
+    init(factory: CarMakingDelegate) {
+        super.init(name: .Audi, showroomCapacity: 90)
+        self.factory = factory
+    }
+}
+final class DealershipSalonLexus: DealershipSalon {
+
+    let slogan = "Lexus. Experience Amazing."
+
+    init(factory: CarMakingDelegate) {
+        super.init(name: .Lexus, showroomCapacity: 80)
+        self.factory = factory
+    }
+}
+final class DealershipSalonVolvo: DealershipSalon {
+
+    let slogan = "Volvo. For life"
+
+    init(factory: CarMakingDelegate) {
+        super.init(name: .Volvo, showroomCapacity: 70)
+        self.factory = factory
+    }
+}
+
+// ! создайте пять различных дилерских центров (например BMW, Honda, Audi, Lexus, Volvo). Все они должны реализовать протокол 'Dealership'.
+var dealershipBrands = [CarBrands : DealershipSalon]()
+
+dealershipBrands[.BMW] = DealershipSalonBMW(factory: factories[.BMW]!)
+dealershipBrands[.Honda] = DealershipSalonHonda(factory: factories[.Honda]!)
+dealershipBrands[.Audi] = DealershipSalonAudi(factory: factories[.Audi]!)
+dealershipBrands[.Lexus] = DealershipSalonLexus(factory: factories[.Lexus]!)
+dealershipBrands[.Volvo] = DealershipSalonVolvo(factory: factories[.Volvo]!)
+
+// ! Каждому дилерскому центру добавьте машин на парковку и в автосалон (используйте те машины, которые создали ранее).
+// Трейдер раставляет автомобили по салонам
+for (vin, car) in trader.cars {
+    if let salon = dealershipBrands[car.model] {
+        salon.cars.append(car)
+        if car.color == Palette.allCases.randomElement()  &&  salon.showroomCars.count < salon.showroomCapacity {
+            salon.showroomCars.append(car)
+        } else {
+            salon.stockCars.append(car)
+        }
+        trader.cars[vin] = nil
+    } else {
+        print("Для марки \(car.model) не нашлось салона")
+    }
+}
+dealershipBrands.forEach { (model: CarBrands, salon: DealershipSalon) in
+    print("Количество автомобилей переданнх в диллерский центр \(model)): ", salon.cars.count)
+}
+print("Количество автомоблией оставшихся у трейдера: ", trader.cars.count)
+
+
+// MARK: - Задача №1
+
+print(line)
+
+// ! 1. Внесите изменения в метод 'makeSpecialOffer()' таким образом, чтобы он возвращал ошибку, если машина не соответствует требованиям акции.
+protocol SpecialOffer {
+    func makeSpecialOffer(vin: UUID) throws
+}
+
+enum ErrorSpecialOffer: Error {
+    case noCar
+    case year(_ year: String)
+}
+
+// Возвращать ошибку внутри цикла означает прервать цикл,
+// поэтому метод makeSpecialOffer() должен обрабатывать конкретный автомобиль, а не все
+// для проверки всем автомобилей делаем дополнительную функцию
+
+extension DealershipSalonBMW: SpecialOffer {
+
+    func makeSpecialOffer(vin: UUID) throws {
+        print("\tSpecialOffer")
+        guard var car = cars.first(where: {$0.vin == vin }) else {
+            throw ErrorSpecialOffer.noCar
+        }
+        let date = Date()
+        guard car.buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) else {
+            throw ErrorSpecialOffer.year(date.formatted(.dateTime.year()))
+        }
+        // ! 2. В случае, если нет ошибки, сделайте для этой машины специальное предложение.
+        print("Good: Автомобиль с годом выпуска машины меньше текущего: ", car.buildDate, ", что соответствует условия акции.")
+        car.price = car.price * 85 / 100
+    }
+    // ! 3. Проверьте текущий список машин, чтобы при проверке генерировались ошибки. При необходимости, внесите изменения.
+    // ! 4. Обработайте ошибки.
+    func makeSpecialOfferForAllCars() {
+        cars.forEach { car in
+            do { try makeSpecialOffer(vin: car.vin) }
+            catch ErrorSpecialOffer.noCar {print("Автомобиль не найден")}
+            catch ErrorSpecialOffer.year(let year) {print("Error: Автомобиль имеет год __", year, "__ что не соответствуе условию акции")}
+            catch {print("Error: ?")}
+        }
+    }
+}
+
+// для разнообразия раскроем не как в прошлом ДЗ
+(dealershipBrands[.BMW] as! DealershipSalonBMW).makeSpecialOfferForAllCars()
+
+
+/* MARK: - Задача №2
+
+ - чтобы осуществлялся возврат ошибки в том случае, если машина со скидкой уже находится в автосалоне.
+ - В том случае, если ошибки нет, нужно перегнать машину в автосалон.
+*/
+print(line)
+
+protocol CarToSalon {
+    func toSalon(vin: UUID) throws
+}
+
+enum ErrorCarToSalon: Error {
+    case noCar
+    case into
+}
+
+extension DealershipSalonBMW: CarToSalon {
+
+    func toSalon(vin: UUID) throws {
+        print("\tCar to salon")
+        guard var car = cars.first(where: {$0.vin == vin }) else {
+            throw ErrorCarToSalon.noCar
+        }
+        if showroomCars.contains(where: {$0.vin == vin}) {
+            let date = Date()
+            guard car.buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) else {
+                throw ErrorCarToSalon.into
+            }
+        }
+        addToShowroom(&car)
+    }
+
+    func carsToSalon() {
+        cars.forEach { car in
+            do { try toSalon(vin: car.vin)}
+            catch ErrorCarToSalon.noCar {print("Erro: Автомобиль не найден")}
+            catch ErrorCarToSalon.into  {print("Error: Автомобиль уже в салоне")}
+            catch {print("Error: ?")}
+        }
+    }
+}
+
+(dealershipBrands[.BMW] as! DealershipSalonBMW).carsToSalon()
