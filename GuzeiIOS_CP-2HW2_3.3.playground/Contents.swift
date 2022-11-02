@@ -327,6 +327,8 @@ enum ErrorSpecialOffer: Error {
     case year(_ year: String)
 }
 
+let currentYear = String(Calendar.current.component(.year, from: Date()))
+
 // Возвращать ошибку внутри цикла означает прервать цикл,
 // поэтому метод makeSpecialOffer() должен обрабатывать конкретный автомобиль, а не все
 // для проверки всех автомобилей делаем дополнительную функцию
@@ -335,11 +337,11 @@ extension DealershipSalonBMW: SpecialOffer {
 
     func makeSpecialOffer(_ index: Int) throws {
         print("\tSpecialOffer")
-        let date = Date()
+
         let year = cars[index].buildDate.formatted(.dateTime.year())
-        guard year != date.formatted(.dateTime.year()) else {
+        guard year != currentYear else {
             // ! 1. Внесите изменения в метод 'makeSpecialOffer()' таким образом, чтобы он возвращал ошибку, если машина не соответствует требованиям акции.
-            throw ErrorSpecialOffer.year(date.formatted(.dateTime.year()))
+            throw ErrorSpecialOffer.year(currentYear)
         }
         // ! 2. В случае, если нет ошибки, сделайте для этой машины специальное предложение.
         print("Good: Автомобиль с годом выпуска машины меньше текущего: \(year), что соответствует условия акции.")
@@ -371,6 +373,7 @@ extension DealershipSalonBMW: SpecialOffer {
 var salonBMW = dealershipBrands[.BMW] as! DealershipSalonBMW
 salonBMW.makeSpecialOfferForAllCars()
 
+// кажется такая печать лучше, чем forEach, т.к. forEach будет делать экземпляры автомобиля и засорять память.
 print("\nКонтрольная печать")
 var carsTemp = [Car]()
 carsTemp = salonBMW.cars
@@ -422,17 +425,15 @@ enum ErrorCarToSalon: Error {
 extension DealershipSalonBMW: CarToSalon {
 
    func toSalon(_ index: Int) throws {
-       print("\tCar to salon: ",
+       print("\tПроверяем надо ли переместить в салон автомобиль: ",
              index,
              cars[index].buildDate.formatted(.dateTime.year()),
              cars[index].price,
              cars[index].vin,
              cars[index].color
-//             , terminator: "; "
        )
 
-       let date = Date()
-       if cars[index].buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) {
+       if cars[index].buildDate.formatted(.dateTime.year()) != currentYear {
            guard !showroomCars.contains(where: {$0.vin == cars[index].vin}) else {
                throw ErrorCarToSalon.into
            }
@@ -440,16 +441,16 @@ extension DealershipSalonBMW: CarToSalon {
            // var car = cars[index]
            if let i = stockCars.firstIndex(where: { car in car.vin == cars[index].vin }) {
                var car = stockCars[i]
-               print("На парковке найдено:"
-                     , car.buildDate.formatted(.dateTime.year())
-                     , car.price
-                     , car.vin
-                     , car.color
+               print("На парковке найдено:",
+                     car.buildDate.formatted(.dateTime.year()),
+                     car.price,
+                     car.vin,
+                     car.color
                )
                addToShowroom(&car)
            }
        } else {
-           print("Error? No! Машина без скидки") // тоже просится в throw, но этого нет в условии задачи
+           print("Error? No! Машина без скидки" ) // тоже просится в throw, но этого нет в условии задачи
        }
     }
 
