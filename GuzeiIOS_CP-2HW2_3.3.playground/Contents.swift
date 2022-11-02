@@ -127,11 +127,14 @@ class DealershipSalon: Dealership {
 
     var name: CarBrands
     var showroomCapacity: UInt16
-    var stockCars: [Car] = [] {
-        didSet {
-            cars = stockCars + showroomCars
-        }
-    }
+    var stockCars: [Car] = []
+    // с одной стороны это удобно при удалении и добавлении
+    // но происходит ДВА лишних срабатывания при перестановке
+//    {
+//        didSet {
+//            cars = stockCars + showroomCars
+//        }
+//    }
     var showroomCars: [Car] = [] {
         didSet {
             cars = stockCars + showroomCars
@@ -178,13 +181,13 @@ class DealershipSalon: Dealership {
     }
 
     func addToShowroom(_ car: inout Car) {
-        print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.model, car.color)
+        print("\tПоступил запрос на перегон с парковки склада в автосалон автомобиля: ", car.model, car.price, car.color)
         guard stockCars.contains(where: {$0.vin == car.vin}) else {
             print("На парковке салона такого автомобиля нет")
             return
         }
-        showroomCars.append(car)
-        stockCars.removeAll(where: {$0.vin == car.vin})
+        showroomCars += [car]
+        stockCars.removeAll{ $0.vin == car.vin }
         print("Автомобиль переставлен в салон")
 
         presaleService(&car)
@@ -214,6 +217,7 @@ class DealershipSalon: Dealership {
         }
 
         print(car.vin)
+        cars.removeAll{ $0.vin == car.vin}
         showroomCars.removeAll{ $0.vin == car.vin}
         print("\tПродано!")
 
@@ -226,7 +230,8 @@ class DealershipSalon: Dealership {
             print("Не удалость заказать автомобиль \(name) цвета \(sellColor) в салон")
             return
         }
-        stockCars.append(newCar)
+        cars      += [newCar]
+        stockCars += [newCar]
         print("Автомобиль успешно заказан на заводе \(factory!)")
     }
 }
@@ -312,7 +317,6 @@ print("Количество автомоблией оставшихся у тр�
 
 print(line)
 
-// ! 1. Внесите изменения в метод 'makeSpecialOffer()' таким образом, чтобы он возвращал ошибку, если машина не соответствует требованиям акции.
 protocol SpecialOffer {
     func makeSpecialOffer(_ index: Int) throws
 }
@@ -323,7 +327,7 @@ enum ErrorSpecialOffer: Error {
 
 // Возвращать ошибку внутри цикла означает прервать цикл,
 // поэтому метод makeSpecialOffer() должен обрабатывать конкретный автомобиль, а не все
-// для проверки всем автомобилей делаем дополнительную функцию
+// для проверки всех автомобилей делаем дополнительную функцию
 
 extension DealershipSalonBMW: SpecialOffer {
 
@@ -331,16 +335,18 @@ extension DealershipSalonBMW: SpecialOffer {
         print("\tSpecialOffer")
         let date = Date()
         guard cars[index].buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) else {
+            // ! 1. Внесите изменения в метод 'makeSpecialOffer()' таким образом, чтобы он возвращал ошибку, если машина не соответствует требованиям акции.
             throw ErrorSpecialOffer.year(date.formatted(.dateTime.year()))
         }
         // ! 2. В случае, если нет ошибки, сделайте для этой машины специальное предложение.
         print("Good: Автомобиль с годом выпуска машины меньше текущего: ", cars[index].buildDate, ", что соответствует условия акции.")
         cars[index].price = cars[index].price * 85 / 100
     }
+
     // ! 3. Проверьте текущий список машин, чтобы при проверке генерировались ошибки. При необходимости, внесите изменения.
     // ! 4. Обработайте ошибки.
     func makeSpecialOfferForAllCars() {
-        for i in 0..<cars.count { // если брать автомбиль, то создаётся новый экземпляр (структура) и все изменения будут в нём. Данные в салоне не меняются.
+        for i in 0..<cars.count {
             do { try makeSpecialOffer(i);
                 print("Предложение принято! Цена:", cars[i].price)
             }
@@ -353,31 +359,47 @@ extension DealershipSalonBMW: SpecialOffer {
 // для разнообразия раскроем не как в прошлом ДЗ
 var salonBMW = dealershipBrands[.BMW] as! DealershipSalonBMW
 salonBMW.makeSpecialOfferForAllCars()
-print("Контрольная печать")
-salonBMW.cars.forEach { car in
-    print(car.price)
+
+print("\nКонтрольная печать")
+salonBMW.cars.forEach {
+    car in print( car.buildDate.formatted(.dateTime.year()),
+                  car.price,
+                  car.vin,
+                  car.color
+    )
 }
 
 
 /* MARK: - Задача №2
 
- - чтобы осуществлялся возврат ошибки в том случае, если машина со скидкой уже находится в автосалоне.
+ - осуществлялся возврат ошибки в том случае, если машина со скидкой уже находится в автосалоне.
  - В том случае, если ошибки нет, нужно перегнать машину в автосалон.
 */
 print(line)
 
 protocol CarToSalon {
-    func toSalon(_ index: Int) throws  // по параметрам ограничений не было и упростил себе задачу, чтобы сконцентрироваться на диагностике.
+    func toSalon(_ vin: UUID) throws
 }
 
 enum ErrorCarToSalon: Error {
+    case noCar(vin: UUID)
     case into
 }
 
 extension DealershipSalonBMW: CarToSalon {
 
-   func toSalon(_ index: Int) throws {
-       print("\tCar to salon")
+   func toSalon(_ vin: UUID) throws {
+       guard let index = cars.firstIndex(where: { $0.vin == vin }) else {
+           throw ErrorCarToSalon.noCar(vin: vin)
+       }
+       print("\tCar to salon to: ",
+             index,
+             cars[index].buildDate.formatted(.dateTime.year()),
+             cars[index].price,
+             cars[index].vin,
+             cars[index].color,
+             terminator: "; "
+       )
 
        let date = Date()
        if cars[index].buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) {
@@ -385,16 +407,27 @@ extension DealershipSalonBMW: CarToSalon {
                throw ErrorCarToSalon.into
            }
            var car = cars[index]
-           addToShowroom(&car)
+           addToShowroom(&car) // в этот момент сбиваются индексы массива cars, если его делать вычисляемым. Да и вычислять его в случае перестановки не надо бы.
        } else {
            print("Error? No! Машина без скидки") // тоже просится в throw, но этого нет в условии задачи
        }
     }
 
     func carsToSalon() {
+        // после перегона автомобиля в салон общий массив неконтролируемо сбивается, т.к. он вычисляемый и требуется надёжный набор для цикла.
+        // удобство о одном месте пораждают недобство в другом.
+        var vins = [UUID]()
         for i in 0..<cars.count {
-            do { try toSalon(i)}
-            catch ErrorCarToSalon.into  {print("Error: машина цвета \(cars[i].color) со скидкой  \(cars[i].price) уже находится в автосалоне.", cars[i].buildDate)}
+            vins += [cars[i].vin]
+        }
+        // надёжный цикл по всем автомобилям
+        for vin in vins {
+            do {
+                try toSalon(vin)
+            }
+            catch ErrorCarToSalon.into {
+                print("Error: машина со скидкой уже находится в автосалоне.")
+            }
             catch {print("Error: ?")}
         }
     }
