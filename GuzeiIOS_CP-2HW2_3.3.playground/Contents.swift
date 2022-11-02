@@ -43,6 +43,7 @@ struct BrandCar: Car {
     var color: Palette
     var buildDate: Date
     var price: UInt32 {
+        // срабатывает когда цена меняется в общем массиве и в дополнительном массиве. Всегда два раза.
         didSet {
             print("Цена изменилась. Было: \(oldValue), стало: \(price)")
         }
@@ -129,17 +130,18 @@ class DealershipSalon: Dealership {
     var showroomCapacity: UInt16
     var stockCars: [Car] = []
     // с одной стороны это удобно при удалении и добавлении
-    // но происходит ДВА лишних срабатывания при перестановке
+    // но происходит ДВА лишних срабатывания при перестановке автомобиля с парковки в салон.
 //    {
 //        didSet {
 //            cars = stockCars + showroomCars
 //        }
 //    }
-    var showroomCars: [Car] = [] {
-        didSet {
-            cars = stockCars + showroomCars
-        }
-    }
+    var showroomCars: [Car] = []
+//    {
+//        didSet {
+//            cars = stockCars + showroomCars
+//        }
+//    }
     var cars: [Car] = []
     var factory: CarMakingDelegate?
     var sellColor: Palette = .green // если покупатель сам не выбирает цвет, то предлагаем ему зелёную
@@ -334,19 +336,28 @@ extension DealershipSalonBMW: SpecialOffer {
     func makeSpecialOffer(_ index: Int) throws {
         print("\tSpecialOffer")
         let date = Date()
-        guard cars[index].buildDate.formatted(.dateTime.year()) != date.formatted(.dateTime.year()) else {
+        let year = cars[index].buildDate.formatted(.dateTime.year())
+        guard year != date.formatted(.dateTime.year()) else {
             // ! 1. Внесите изменения в метод 'makeSpecialOffer()' таким образом, чтобы он возвращал ошибку, если машина не соответствует требованиям акции.
             throw ErrorSpecialOffer.year(date.formatted(.dateTime.year()))
         }
         // ! 2. В случае, если нет ошибки, сделайте для этой машины специальное предложение.
-        print("Good: Автомобиль с годом выпуска машины меньше текущего: ", cars[index].buildDate, ", что соответствует условия акции.")
-        cars[index].price = cars[index].price * 85 / 100
+        print("Good: Автомобиль с годом выпуска машины меньше текущего: \(year), что соответствует условия акции.")
+        let newPrice = cars[index].price * 85 / 100
+        // это изменяет цену только в общем массиве, а эта же машина ещё в салоне или на парковке, где цена не меняется автоматически, т.к. автомобиль -- это структура.
+        cars[index].price = newPrice
+        // дальше или искать этот автомобиль в салоне или на парковке и менять ему цену
+        if let i = stockCars.firstIndex(where: { $0.vin == cars[index].vin }) {
+            stockCars[i].price = newPrice
+        } else if let i = showroomCars.firstIndex(where: { $0.vin == cars[index].vin }) {
+            showroomCars[i].price = newPrice
+        }
     }
 
     // ! 3. Проверьте текущий список машин, чтобы при проверке генерировались ошибки. При необходимости, внесите изменения.
     // ! 4. Обработайте ошибки.
     func makeSpecialOfferForAllCars() {
-        for i in 0..<cars.count {
+        for i in 0 ..< cars.count {
             do { try makeSpecialOffer(i);
                 print("Предложение принято! Цена:", cars[i].price)
             }
@@ -361,11 +372,34 @@ var salonBMW = dealershipBrands[.BMW] as! DealershipSalonBMW
 salonBMW.makeSpecialOfferForAllCars()
 
 print("\nКонтрольная печать")
-salonBMW.cars.forEach {
-    car in print( car.buildDate.formatted(.dateTime.year()),
-                  car.price,
-                  car.vin,
-                  car.color
+var carsTemp = [Car]()
+carsTemp = salonBMW.cars
+for i in 0 ..< carsTemp.count {
+    print( i,
+           carsTemp[i].buildDate.formatted(.dateTime.year()),
+           carsTemp[i].price,
+           carsTemp[i].vin,
+           carsTemp[i].color
+    )
+}
+print("\nStock")
+carsTemp = salonBMW.stockCars
+for i in 0 ..< carsTemp.count {
+    print( i,
+           carsTemp[i].buildDate.formatted(.dateTime.year()),
+           carsTemp[i].price,
+           carsTemp[i].vin,
+           carsTemp[i].color
+    )
+}
+print("\nRoom")
+carsTemp = salonBMW.showroomCars
+for i in 0 ..< carsTemp.count {
+    print( i,
+           carsTemp[i].buildDate.formatted(.dateTime.year()),
+           carsTemp[i].price,
+           carsTemp[i].vin,
+           carsTemp[i].color
     )
 }
 
@@ -378,27 +412,23 @@ salonBMW.cars.forEach {
 print(line)
 
 protocol CarToSalon {
-    func toSalon(_ vin: UUID) throws
+    func toSalon(_ index: Int) throws
 }
 
 enum ErrorCarToSalon: Error {
-    case noCar(vin: UUID)
     case into
 }
 
 extension DealershipSalonBMW: CarToSalon {
 
-   func toSalon(_ vin: UUID) throws {
-       guard let index = cars.firstIndex(where: { $0.vin == vin }) else {
-           throw ErrorCarToSalon.noCar(vin: vin)
-       }
-       print("\tCar to salon to: ",
+   func toSalon(_ index: Int) throws {
+       print("\tCar to salon: ",
              index,
              cars[index].buildDate.formatted(.dateTime.year()),
              cars[index].price,
              cars[index].vin,
-             cars[index].color,
-             terminator: "; "
+             cars[index].color
+//             , terminator: "; "
        )
 
        let date = Date()
@@ -406,24 +436,27 @@ extension DealershipSalonBMW: CarToSalon {
            guard !showroomCars.contains(where: {$0.vin == cars[index].vin}) else {
                throw ErrorCarToSalon.into
            }
-           var car = cars[index]
-           addToShowroom(&car) // в этот момент сбиваются индексы массива cars, если его делать вычисляемым. Да и вычислять его в случае перестановки не надо бы.
+           // нельзя брать автомобиль из общего массива, т.к. эта процедура меняет порядок элементов в массиве.
+           // var car = cars[index]
+           if let i = stockCars.firstIndex(where: { car in car.vin == cars[index].vin }) {
+               var car = stockCars[i]
+               print("На парковке найдено:"
+                     , car.buildDate.formatted(.dateTime.year())
+                     , car.price
+                     , car.vin
+                     , car.color
+               )
+               addToShowroom(&car)
+           }
        } else {
            print("Error? No! Машина без скидки") // тоже просится в throw, но этого нет в условии задачи
        }
     }
 
     func carsToSalon() {
-        // после перегона автомобиля в салон общий массив неконтролируемо сбивается, т.к. он вычисляемый и требуется надёжный набор для цикла.
-        // удобство о одном месте пораждают недобство в другом.
-        var vins = [UUID]()
-        for i in 0..<cars.count {
-            vins += [cars[i].vin]
-        }
-        // надёжный цикл по всем автомобилям
-        for vin in vins {
+        for i in 0 ..< cars.count {
             do {
-                try toSalon(vin)
+                try toSalon(i)
             }
             catch ErrorCarToSalon.into {
                 print("Error: машина со скидкой уже находится в автосалоне.")
