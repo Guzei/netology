@@ -52,11 +52,13 @@ protocol Cooking {
     func cooking(dish: TypeOfDish)
 }
 
+typealias FoodList = Dictionary<Ingredients,UInt>
 
-protocol Restaurant {                       // 1.1. Ресторан
+
+protocol RestaurantPr {                     // 1.1. Ресторан
     var name: String { get }                // название
     var staff: String { get }               // сотрудники
-    var foodRoom: String { get }            // склад с продуктами
+    var foodRoom: FoodList { get }          // склад с продуктами
     var menu: String { get }                // меню
 }
 
@@ -195,41 +197,54 @@ struct Order: OrderProtocol {
 // * заказы. Содержит в себе заказы.
 //
 
-var foodRoom: Dictionary<Ingredients,Int> {
-    get {
-        guard let dicStrInt = db.dictionary(forKey: "ingredient") as? [String:Int] else {
-            print("no data for key \"ingredient\"")
-            return [:]
+// Видим, что и тут "склад" и в протоколе "ресторан" есть "склад с продуктами".
+struct Restaurant: RestaurantPr {
+
+    var name: String
+    var staff: String = ""
+    var menu: String = ""
+    internal var foodRoom: FoodList = [:]
+
+    init(name: String) {
+        self.name = name
+        self.foodRoom = initFR()
+    }
+
+    // Забираем из UserDefaults хранимый там словарь [String:UInt] и превращаем его словарь [enum:UInt]
+    func initFR() -> FoodList {
+        var foodRoom: FoodList = [:]
+        guard let foodRoomDB = db.dictionary(forKey: name) as? [String:UInt] else {
+            print("no data for key \"\(name)\"")
+            return foodRoom
         }
-        var dicEnumInt: Dictionary<Ingredients, Int> = [:]
-        for (s,i) in dicStrInt {
-            if let e = Ingredients(rawValue: s) {
-                dicEnumInt[e] = i
+        for (name, count) in foodRoomDB {
+            if let ingredient = Ingredients(rawValue: name) {
+                foodRoom[ingredient] = count
             }
         }
-        return dicEnumInt
+        return foodRoom
     }
-    set {
-        var dicStrInt: Dictionary<String, Int> = [:]
-        for (key, val) in newValue {
-            dicStrInt[key.rawValue] = val
-        }
-        db.set(dicStrInt, forKey: "ingredient")
+
+    mutating func updateFoodRoom(_ foodList: FoodList) {
+        foodList.forEach{ foodRoom[$0] = $1 }
+    }
+
+    func toDB() {                                                       // запоминаем все изменения на складе
+        var foodRoomDB: Dictionary<String, UInt> = [:]                  // формат словаря в UserDefaults
+        foodRoom.forEach{ foodRoomDB[$0.rawValue] = $1 }                // конвертируем
+        db.set(foodRoomDB, forKey: name)                                // запоминаем словарь целиком в одном ключе
     }
 }
 
-print("На продуктовом складе до обноления:")
-foodRoom.forEach { (key: Ingredients, value: Int) in
-    print(key, value)
-}
+var butler = Restaurant(name: "Butler")
+print("На продуктовом складе ректорана \(butler.name) уже давно лежит:")
+butler.foodRoom.forEach{ print($0, $1) }
 
-foodRoom[.salt] = 1                                       // завезли яйца
+butler.updateFoodRoom([.salt:1, .eggs:80, .potatoes:2, .onion:3])
+
+butler.toDB()
 
 
-print("На продуктовом складе после обноления:")
-foodRoom.forEach { (key: Ingredients, value: Int) in
-    print(key, value)
-}
 
 
 // Добавлять свои свойства и методы допустимо.
