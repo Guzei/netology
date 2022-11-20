@@ -129,20 +129,10 @@ class DealershipSalon: Dealership {
     var name: CarBrands
     var showroomCapacity: UInt16
     var stockCars: [Car] = []
-    // с одной стороны это удобно при удалении и добавлении
+    // с одной стороны тут можно сделать didSet и вычислять общий массив при удалении и добавлении в этот,
     // но происходит ДВА лишних срабатывания при перестановке автомобиля с парковки в салон.
-//    {
-//        didSet {
-//            cars = stockCars + showroomCars
-//        }
-//    }
     var showroomCars: [Car] = []
-//    {
-//        didSet {
-//            cars = stockCars + showroomCars
-//        }
-//    }
-    var cars: [Car] = []
+    var cars: [Car] = [] // в реальном проекте я сделал бы признак места нахождения автомобиля в протоколе автомобиля. Тогда и два массива выше были бы лишние.
     var factory: CarMakingDelegate?
     var sellColor: Palette = .green // если покупатель сам не выбирает цвет, то предлагаем ему зелёную
 
