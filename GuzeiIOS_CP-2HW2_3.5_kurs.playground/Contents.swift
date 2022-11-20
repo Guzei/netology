@@ -46,21 +46,35 @@
 //      Реализуйте любую логику на ваше усмотрение.
 
 
+//
+//  попробовал побольше вспомнить что учили: делегаты, обработка ошибок, наблюдатели, перечисления, extension
+//      pushOrder() - как концентрация многого
+//  дополнительно нечаянно основил UserDefaults решив, что это и есть "хранилище", но потом усомнился.
+//      Решил задачу записи словаря с перечислением в UserDefaults
+//  с заказами дополнительно реализована логика "запись на бумажку у столика" и потом "запись в кассу с проврекой возможности исполнить"
+//  В качестве названий блюд использовал пиктограммы. Очень хотелось попробовать как это раотает. Оказалось очень наглядно, мне понравилось.
+//      заменить на слова реплейсом будет очень просто при необходимости
+//
+
 
 import Foundation
 
 let db = UserDefaults.standard                      // Хранилище хранилищ :)
 
+typealias FoodList = Dictionary<Food, UInt>         // это тип списка продуктов название:количество и для склада и для блюда
+
+typealias Menu = Dictionary<TypeOfDish, Set<NameOfDish>>    // Понравилось мне писать тип коллекции словами. Нагляднее выходит. Может быть пока.
+
+typealias PreOrder = Array<NameOfDish>              // предварительный заказ. Только имена.
+
+//
 // MARK: - FOODS -
 //
 //      Начнём с продуктов. Официанты с заказами и пр. уже на них завязаны, поэтому позже.
 //
 
-typealias FoodList = Dictionary<Foods, UInt>        // это тип списка продуктов название:количество и для склада и для блюда
 
-typealias Menu = Dictionary<TypeOfDish, Set<NameOfDish>>    // Понравилось мне писать тип коллекции словами. Нагляднее выходит. Может быть пока.
-
-enum Foods: String, CaseIterable {                  // продукты (ингредиенты), которые могут быть на продуктовом складе ресторана и которые входят в блюда
+enum Food: String, CaseIterable {                   // продукты (ингредиенты), которые могут быть на продуктовом складе ресторана и которые входят в блюда
                                                     // ! Создайте минимум 15 продуктов на складе
     case potatoes
     case onion
@@ -77,6 +91,7 @@ enum Foods: String, CaseIterable {                  // продукты (инг�
     case prosecco
     case aperolLiqueur
     case oliveOil
+    case flour
 }
 
 enum TypeOfDish {
@@ -88,24 +103,32 @@ enum TypeOfDish {
     case cocktail
 }
 
-enum NameOfDish {                                   // В меню ресторана так оказало очень наглядно
+enum NameOfDish {
 
     case 🥗                                         // салат Цезарь
     case 🍳                                         // яичница глазунья
     case 🥩                                         // стейк
     case 🍟                                         // картофель фри
-    case 🍰                                         // пирожное
+    case 🍰                                         // бисквит
     case 🥤                                         // коктейль Кровавая Мери
     case 🍹                                         // коктейль Шприц Апероль
 }
 
 protocol Dish {                                     // MARK: 1.3. Блюдо
 
+    var name: NameOfDish {get}
     var type: TypeOfDish {get}                      // ! тип блюда (салат, горячее, гарнир, десерт)
     var food: FoodList {get}                        // ! ингредиенты (картофель, лук, мясо, соль)
     var time: UInt {get}                            // ! время приготовления                        // в секундах
     var price: UInt {get}                           // ! цена                                       // в рублях
-    var isReady: Bool {get}                                                                         // готово?
+    var isReady: Bool {get}                                                                         // готово? заказ готов, когда все блюда готовы
+}
+extension Dish {
+    func printSelf() {
+        print("Dish name: \(name), of type \(type), with price \(price), time to ready [sec] - \(time) \(isReady ? "is Ready!" : "no reade yet" )")
+        print("ingredients:")
+        food.forEach{print($0,$1)}
+    }
 }
 
 
@@ -113,60 +136,76 @@ protocol Dish {                                     // MARK: 1.3. Блюдо
 // ! Ингредиенты зависят от типа блюда. Например, для яичницы нужны: яйца, масло, соль.
 // ! Создать минимум 5 блюд.
 
-//  Тут хотелось проследить совпадение количества NameOfDish и структур конкретных блюд, но не придумал как посчитать структуры.
+//  Тут хотелось проследить совпадение количества NameOfDish и количества структур конкретных блюд, но не придумал как посчитать структуры.
 
 struct FriedEggs: Dish {
 
-    var type: TypeOfDish = .main
-    var food: FoodList = [.eggs:2, .butter:1, .salt:1]
-    var price: UInt = 500
-    internal var time: UInt = 600
-    internal var isReady: Bool = false
+    let name: NameOfDish = .🍳
+    let type: TypeOfDish = .main
+    let food: FoodList = [.eggs:2, .butter:1, .salt:1]          // иногда состав пишут в меню подробно
+    let price: UInt = 500
+    internal let time: UInt = 600
+    internal let isReady: Bool = false
 }
 
 struct CaesarSalad: Dish {
 
-    var type: TypeOfDish = .salad
-    var food: FoodList = [.caesarSalad: 1, .caesarSaladDressing: 1, .chicken: 3] // Это салат курицей или курица с салатом?
-    var price: UInt = 750
-    internal var time: UInt = 500
-    internal var isReady: Bool = false
+    let name: NameOfDish = .🥗
+    let type: TypeOfDish = .salad
+    let food: FoodList = [.caesarSalad: 1, .caesarSaladDressing: 1, .chicken: 3] // Это салат курицей или курица с салатом?
+    let price: UInt = 750
+    internal let time: UInt = 500
+    internal let isReady: Bool = false
 }
 
-struct steak: Dish {
+struct Steak: Dish {
 
-    var type: TypeOfDish = .main
-    var food: FoodList = [.meat: 1]
-    var time: UInt = 900
-    var price: UInt = 1200
-    var isReady: Bool = false
+    let name: NameOfDish = .🥩
+    let type: TypeOfDish = .main
+    let food: FoodList = [.meat: 1]
+    let price: UInt = 1200
+    internal let time: UInt = 900
+    internal let isReady: Bool = false
 }
 
 struct FrenchFries: Dish {
 
-    var type: TypeOfDish = .side
-    var food: FoodList = [.potatoes: 2, .salt: 2]
-    var time: UInt = 300
-    var price: UInt = 200
-    var isReady: Bool = false
+    let name: NameOfDish = .🍟
+    let type: TypeOfDish = .side
+    let food: FoodList = [.potatoes: 2, .salt: 2]
+    let price: UInt = 200
+    internal let time: UInt = 300
+    internal let isReady: Bool = false
+}
+
+struct Biscuit: Dish {
+
+    let name: NameOfDish = .🍰
+    let type: TypeOfDish = .dessert
+    let food: FoodList = [.eggs: 5, .butter: 100, .flour: 100]
+    let price: UInt = 500
+    internal let time: UInt = 3600
+    internal let isReady: Bool = false
 }
 
 struct BloodyMary: Dish {
 
-    var type: TypeOfDish = .cocktail
-    var food: FoodList = [.vodka: 3, .tomatoJuice: 1]
-    var time: UInt = 30
-    var price: UInt = 300
-    var isReady: Bool = false
+    let name: NameOfDish = .🥤
+    let type: TypeOfDish = .cocktail
+    let food: FoodList = [.vodka: 3, .tomatoJuice: 1]
+    let price: UInt = 300
+    internal let time: UInt = 30
+    internal let isReady: Bool = false
 }
 
 struct AperolSpritz: Dish {
 
-    var type: TypeOfDish = .cocktail
-    var food: FoodList = [.aperolLiqueur: 1, .prosecco: 1, .sparklingWater: 2]
-    var time: UInt = 60
-    var price: UInt = 600
-    var isReady: Bool = false
+    let name: NameOfDish = .🍹
+    let type: TypeOfDish = .cocktail
+    let food: FoodList = [.aperolLiqueur: 1, .prosecco: 1, .sparklingWater: 2]
+    let price: UInt = 600
+    internal let time: UInt = 60
+    internal let isReady: Bool = false
 }
 
 
@@ -181,11 +220,21 @@ protocol Orders {                                   // MARK: 1.4. Заказы
     var timeIn: Date {get}                          // ! время получения заказа
     var timePlan: Date? {get}                       // ! время отдачи заказа по плану
     var timeOut: Date? {get}                        //   время отдачи заказа реальное
-    var dishs: Array<Dish> {get}                    // ! блюда в заказе       // одинаковые названия блюд в заказе -- норма
+    var dishs: Array<Dish> {get}                    // ! блюда в заказе // Одинаковые названия блюд в заказе -- норма.
     var isReady: Bool {get}                         // ! готовность
 }
+extension Orders {
+    func printSelf() {
+        print("\n -- Order --")
+        print("TimeIn: ", timeIn)
+        print("TimeOut: ", timeOut ?? "no information")
+        print("TimePlan: ", timePlan ?? "no information")
+        print("Redy?:", isReady)
+        dishs.forEach { $0.printSelf() }
+    }
+}
 
- struct Order: Orders {                             // MARK: 2.3. Заказ подпишите под протокол Заказы
+struct Order: Orders {                             // MARK: 2.3. Заказ подпишите под протокол Заказы
 
     var timeIn: Date = Date()
     var timePlan: Date?
@@ -204,21 +253,16 @@ protocol Orders {                                   // MARK: 1.4. Заказы
     var isReady: Bool = false
 }
 
-// Хранилище заказов будет уже внутри ресторана
 
 
-
-// MARK: - person & staff -
+// MARK: - persons & staff -
 //
-//      Вот и до людей должна очередь, т.к. они работают с продуктами и заказами.
+//      Вот и до людей дошла очередь, т.к. они работают с продуктами и заказами.
 //
 
-typealias Staff = Dictionary<UUID, MemberOfStaff>
+typealias Staff = Array<MemberOfStaff>
 
-enum Sex {
-    case male
-    case female
-}
+enum Sex { case male, female }
 
 enum Position {                                     // должность
 
@@ -227,86 +271,151 @@ enum Position {                                     // должность
     case garcon                                     // официант
 }
 
-protocol Person {                                   // просто человек
+protocol MemberOfStaff {                            // MARK: 1.2. Сотрудник
 
     var name: String {get}                          // ! имя
     var sex: Sex {get}                              // ! пол
     var age: UInt8 {get}                            // ! возраст
-}
-
-protocol MemberOfStaff: Person {                    // MARK: 1.2. Сотрудник
-                                                    //   человек становится сотрудником, когда получает табельный номер и должность
-    var id: UUID {get}
     var position: Position {get}                    // ! должность (менеджер, повар, официант и т.д.)
+    //var vacant: Bool {get}                          //   любой член команды может быть занят и в это время он не может ни готовить, ни принимать заказы.
 }
 
-class Garcon: MemberOfStaff {                      // MARK: 2.1. Должности. Официант.
+enum Errors: Error {
+    case food(food: Food)
+    case count(food: Food, count: UInt, countInRoom: UInt)
+    case sorry(dishName: NameOfDish)
+}
 
-    let id = UUID()
+// А вот и делегаты пошли. Будем поручать ресторану проверить есть ли на его складе продукты из списка.
+// Кто как не владелец склада продуктов и хранилища заказов лучше всех их обработает?
+protocol CheckFoodsInRoom {
+    func checkFoodsInRoom(foodList: FoodList) throws
+}
+protocol PushToOrders {
+    func pushToOrders(_ order: Order)
+}
+
+class Garcon: MemberOfStaff {
+                                                    // MARK: 2.1. Должности. Официант.
+                                                    // ! подписать под протокол Сотрудник
     var name: String
     let sex: Sex
     var age: UInt8
     var position: Position = .garcon
+    var vacant = true                               // свободен. Готов принять заказ.
+    var preOrder: PreOrder = []                     // для записи заказа на бумажку у столика и последующего формирования заказа в компьютере
+    var rest: CheckFoodsInRoom & PushToOrders
 
-    init(name: String, sex: Sex, age: UInt8) {
+    init(name: String, sex: Sex, age: UInt8, rest: CheckFoodsInRoom & PushToOrders) {
         self.name = name
         self.sex = sex
         self.age = age
+        self.rest = rest
     }
 
-    func takeOrder(dishs: Set<Menu>) {             // ! добавляет в начало хранилища с заказами переданный заказ.
-        print("Order to list")
+    func pushOrder() throws {                       // ! добавляет в начало хранилища с заказами переданный заказ.
+                                                    //   начало -- значит кладём в first, а забираеть будем last
+                                                    //   но сначала надо проверить хватает ли продуктов
+                                                    //   по записанным на бумажку названиям блюд пытаемся создать их экземпляры на кассе (в БД)
+        try preOrder.forEach({ dishName in
+
+            // 1. берём рецепт заказанного блюда
+            var dish: Dish {
+                switch dishName {
+                case .🥗: return CaesarSalad()
+                case .🍳: return FriedEggs()
+                case .🥩: return Steak()
+                case .🍟: return FrenchFries()
+                case .🍰: return Biscuit()
+                case .🥤: return BloodyMary()
+                case .🍹: return AperolSpritz()
+                }
+            }
+
+            do {
+                try rest.checkFoodsInRoom(foodList: dish.food)
+                print("-- Продуктов для блюда \(dish.name) достаточно. Будем готовить.")
+                // формируем заказ и вписываем его в стек
+                let order = Order( dishs: [dish])
+                rest.pushToOrders(order)
+            }
+            catch {throw Errors.sorry(dishName: dish.name)}
+        })
+        // официант готов принять новый заказ
+        vacant = true
+        preOrder = []
     }
 }
 
-let ira   = Garcon(name: "Ира" , sex: .female, age: 20)
-let misha = Garcon(name: "Миша", sex:   .male, age: 20)
+struct Manager: MemberOfStaff {                     // MARK: 2.1. Должности. Менеджер.
 
+    var name: String
+    let sex: Sex
+    var age: UInt8
+    var position: Position = .manager
+}
 
-// соискатели на должности
-//var juzeppe = Person(name: "Juzeppe", sex:   .male, age: 40)
-//var mila    = Person(name: "Mila"   , sex: .female, age: 30)
-//var ivan    = Person(name: "Ivan"   , sex:   .male, age: 30)
-//var ira     = Person(name: "Ira"    , sex: .female, age: 20)
-//var masha   = Person(name: "Masha"  , sex: .female, age: 20)
-//
+protocol Cooking {
+    func cooking()
+}
+struct Cook: MemberOfStaff, Cooking {               // MARK: 2.1. Должности. Повар.
 
+    var name: String
+    let sex: Sex
+    var age: UInt8
+    var position: Position = .cook
+
+    func cooking() {                                // ! Повар берет первый добавленный заказ из хранилища и готовит.
+        print("Cook")
+    }
+}
+
+protocol CookingDessert {                           // MARK: 2.1. Должности. Контдитер.
+    func cooking()
+}
+struct Confectioner: MemberOfStaff, CookingDessert {
+
+    var name: String
+    let sex: Sex
+    var age: UInt8
+    var position: Position = .cook
+
+    func cooking() {
+        print("Dessert cooking...")
+        print("Dessert is ready")
+    }
+}
 
 
 
 // MARK: - restaurant
 
-
 protocol Restaurant {                               // MARK: 1.1. Ресторан
 
-    var name: String {get}                        // ! название
-    var staff: Staff {get}                        // ! сотрудники
-    var menu: Menu {get}                          // ! меню
-    var foodRoom: FoodList {get}                  // ! склад с продуктами
-    var order: Array<Orders> {get}               //   хранилище (стек типа FIFO) заказов наполняемый официантами и уменьшаемый шеф-поваром
+    var name: String {get}                          // ! название
+    var staff: Staff {get}                          // ! сотрудники
+    var menu: Menu {get}                            // ! меню
+    var foodRoom: FoodList {get}                    // ! склад с продуктами
 }
 
 
-
-
 // MARK: - модель конкретного ресторна -
-// Иерархия для сотрудников -- Агрегация = Слабая ассоциация. При удалении ресторана должности пропадут, но люди останутся.
-// иерархия для блюд -- Композиция = Владение или Сильная ассоциация. Блюда разработаны шефом только для этого ресторна.
 
-
-struct Butler: Restaurant {
+class Butler: Restaurant, CheckFoodsInRoom, PushToOrders {
 
     var name = "Butler"
-    var staff = Staff()
+    var staff: Staff = []
     var menu: Menu = [.salad    : [.🥗],           // у каждого ресторана своё меню, но структура общая
-                      .main     : [.🍳,.🥩],
+                      .main     : [.🍳, .🥩],
                       .side     : [.🍟],
                       .dessert  : [.🍰],
                       .cocktail : [.🥤, .🍹]
     ]
-    internal var foodRoom = FoodList()              // склад продуктов. Будет запоминаться.
-    internal var order: Array<Orders> = []         // все заказы, добавленные всеми официантами.
 
+                                                    // MARK: 3.   Создайте хранилища:
+    var foodRoom = FoodList()                       // ! склад продуктов.
+    var orders: Array<Orders> = []                  // ! заказы. Содержит в себе заказы.
+                                                    //   хранилище заказов -- стек типа FIFO --  наполняемый официантами и уменьшаемый шеф-поваром и барменом
 
     init() {
         self.foodRoom = initFoodRoom()
@@ -321,14 +430,14 @@ struct Butler: Restaurant {
             return foodRoom
         }
         for (name, count) in foodRoomDB {
-            if let food = Foods(rawValue: name) {
+            if let food = Food(rawValue: name) {
                 foodRoom[food] = count
             }
         }
         return foodRoom
     }
 
-    mutating func updateFoodRoom(_ foodList: FoodList) {
+    func updateFoodRoom(_ foodList: FoodList) {
         foodList.forEach{ foodRoom[$0] = $1 }
     }
 
@@ -338,40 +447,85 @@ struct Butler: Restaurant {
         db.set(foodRoomDB, forKey: name)                                // запоминаем словарь целиком в одном ключе
     }
 
-    mutating func hiringToJob(person: Person, position: Position) {
-        let newMemberOfStaff = MemberOfStaff(person: person, positon: position)
-        staff[newMemberOfStaff.id] = newMemberOfStaff
+    func printStaff() {
+        print("\nВ ресторане \(butler.name) работают:")
+        butler.staff.forEach({
+            print("\($0.position) - \($0.name)")
+            switch $0.position {
+            case .garcon: print("vacant?", ($0 as! Garcon).vacant)
+            case .cook, .manager: print($0.age)
+            }
+        })
+    }
+
+    func printOrders() {
+        orders.forEach{$0.printSelf()}
     }
 
     // запрос свободного официанта
-    // TODO: guard и обработка ошибки
-    func takeGarcon() -> MemberOfStaff? {
-        if let garson = staff.first(where: { $1.vacant && $1.position == .garcon })?.value {
-            print("-- Здравствуйте, меня зовут \(garson.name), я буду вашим официантом сегодня")
-            garson.vacant = false
-            return garson
-        } else {
-            print("Изивинте, все официанты заняты")
+    // TODO: guard и обработка ошибок
+    func takeGarcon() -> Garcon? {
+
+        let garcons = staff.compactMap{ $0 as? Garcon}
+
+        if garcons.isEmpty {
+            print("-- У нас самообслуживание!")
             return nil
+        } else {
+            if let garcon = garcons.first(where: {$0.vacant}) { // находим свободного
+                garcon.vacant = false
+                print("-- Здравствуйте, меня зовут \(garcon.name), я буду вашим официантом сегодня")
+                return garcon
+            } else {
+                print("-- Извинте, все официанты заняты")
+                return nil
+            }
         }
+    }
+
+    func checkFoodsInRoom(foodList: FoodList) throws {
+        print("Checking foods")
+        for (food, count) in foodList {
+            print("Check", food, count)
+            guard let countInRoom = foodRoom[food]  else {
+                throw Errors.food(food: food)
+            }
+            guard countInRoom >= count else {
+                throw Errors.count(food: food, count: count, countInRoom: countInRoom)
+            }
+        }
+        // только после проверки наличия всех ингредиентов блюда их можно бронировать для приготовления
+        // в учебыных целях для разнообразия другой цикл
+        foodList.forEach {
+            print("было",foodRoom[$0]!)
+            foodRoom[$0]! -= $1                     // смело форсим, т.к. вышё всё проверили
+            print("стало",foodRoom[$0]!)
+        }
+    }
+
+    func pushToOrders(_ order: Order) {
+        orders.insert(order, at: 0)                 // ! метод “принять заказ” добавляет в начало хранилища с заказами переданный заказ.
+                                                    //   если бы не "начало", то сделал бы += [], a изымыл бы first
     }
 }
 
+
+// MARK:                        - GO! -
+
 var butler = Butler()
 
+// иерархия для сотрудников и ресторана -- Агрегация = Слабая ассоциация. При удалении ресторана люди останутся.
+// приём на работу
+butler.staff += [Garcon(name: "Ира", sex: .female, age: 20, rest: butler),
+                 Garcon(name: "Миша", sex: .male, age: 20, rest: butler),
+                 Cook(name: "Juzeppe", sex: .male, age: 40),
+                 Confectioner(name: "Мила", sex: .female, age: 30),
+                 Cook(name: "Иван", sex: .male, age: 30)
+]
 
-// Нанимаем людей в ресторан в качестве сотрудников
-butler.hiringToJob(person: ira, position: .garcon)
-butler.hiringToJob(person: masha, position: .garcon)
-butler.hiringToJob(person: juzeppe, position: .cook)
-butler.hiringToJob(person: mila, position: .cook)
-butler.hiringToJob(person: ivan, position: .manager)
+butler.printStaff()
 
-print("\nВ ресторан \(butler.name) приняты на работу:")
-butler.staff.forEach{print("\($1.name) - \($1.position)")}
-
-
-print("\nНа продуктовом складе ресторана \(butler.name) уже давно лежат:")
+print("\nНа продуктовом складе ресторана \(butler.name) со вчерашнего дня лежат:")
 butler.foodRoom.forEach{ print($0, $1) }
 
 // с сортировкой решил не заморачиваться. Это отдельный пармер вводить придётся. Ведь по алфавиту меню не сортируют. Но сейчас, навероное, это не самое важное.
@@ -383,100 +537,75 @@ for (type, dishSet) in butler.menu {
     }
 }
 
-// занятые работой официанты и принятые ими заказы
-var busyGarson: [UUID:[NameOfDish]] = [:]
+var busygarcon = [Garcon]()
 
 print("\n-- Официант!")
-if let garson = butler.takeGarcon() {
-    print("-- \(garson.name), две яичницы, пожалуйста. Глазуньи!")
-    busyGarson[garson.id] = [.🍳,.🍳]
+if var garcon = butler.takeGarcon() {
+    print("-- \(garcon.name), две яичницы, пожалуйста. Глазуньи!")
+    garcon.preOrder = [.🍳,.🍳]
     print("-- Да, и кокнейль Кровавая Мэри, чуть не забыл")
-    busyGarson[garson.id]! += [.🥤]
+    garcon.preOrder += [.🥤]
     print("-- Позвольте повторить Ваш заказ:", terminator: " ")
-    busyGarson[garson.id]!.forEach{print($0, terminator: " ")}
+    garcon.preOrder.forEach{print($0, terminator: " ")}
 }
-
-print("\n-- Официант!")
-if let garson = butler.takeGarcon() {
-    print("-- \(garson.name), мне коктейльчика хочется")
+//butler.printStaff()
+print("\n\n-- Официант!")
+if var garcon = butler.takeGarcon() {
+    print("-- \(garcon.name), мне стейк и коктейльчик какой-нибудь посоветуйте...")
     let menuItem = butler.menu[.cocktail]?.randomElement() ?? .🥤
-    print("Не желаете попробовать \(menuItem)?")
-    print("Годится!")
-    busyGarson[garson.id] = [.🥤]
+    print("-- Не желаете попробовать \(menuItem)?")
+    print("-- Годится!")
+    garcon.preOrder = [.🥩, menuItem]
     print("-- Позвольте повторить Ваш заказ:", terminator: " ")
-    busyGarson[garson.id]!.forEach{print($0, terminator: " ")}
+    garcon.preOrder.forEach{print($0, terminator: " ")}
 }
+//butler.printStaff()
 
-print("\n-- Официант!")
-if let garson = butler.takeGarcon() {
+print("\n\n-- Официант!")
+if var garcon = butler.takeGarcon() {
     let menuItem = butler.menu[.cocktail]?.randomElement() ?? .none
     if menuItem != .none {
-        print("-- \(garson.name), хочу \(String(describing: menuItem)), да побыстрее!")
+        print("-- \(garcon.name), хочу \(String(describing: menuItem)), да побыстрее!")
     }
-    // у нас только два официанта и этому готю должен быть отказ
+    // у нас только два официанта и этому треьему гостю должен быть отказ
+}
+//butler.printStaff()
+
+
+print("\n -- Официанты понесли заказы к кассе --")
+butler.staff.compactMap{$0 as? Garcon}.forEach { garcon in
+    if !garcon.vacant {
+        do {
+            try garcon.pushOrder()
+        }
+        catch Errors.sorry(dishName: let name) {print("-- Извините, мы не можем приготовить \(name). Продукты на складе закончились :(")}
+        catch {print("Error: ??")}
+
+    }
 }
 
-// Официанты понесли заказы на кухню
-busyGarson.forEach { (id, dishs) in
-    let garson = butler.staff[id]!                     // смело форсим, т.к. id сюда пришло надёжное только что.
-    garson.takeOrder(dishs)
-    garson.vacant = true                     // смело форсим, т.к. id сюда пришло надёжное только что.
-}
+butler.printOrders()
+
+print("\n -- Повара начинают работать --")
 
 
-
-butler.updateFoodRoom([.salt:2, .eggs:80, .potatoes:2, .onion:5])
+// вечером привезли новые продукты
+butler.updateFoodRoom([.salt: 100,
+                       .eggs: 100,
+                       .potatoes: 100,
+                       .onion: 100,
+                       .butter: 1,                  // масло мало, чтобы вторую яичницу нельзя было приготовить и сработал отказ
+                       .meat: 2,
+                       .vodka: 100,
+                       .sparklingWater: 100,
+                       .prosecco: 100,
+                       .aperolLiqueur: 100,
+                       .tomatoJuice: 100
+])
 butler.toDB()
 
 
 
-
-
-//var menu = [FriedEggs.self, CaesarSalad.self] as [Any]
-//
-
-
-//struct Manager: MemberOfStaff {                     // MARK: 2.1. Должности. Менеджер.
-//
-//    let id: UUID
-//    var name: String
-//    let sex: Sex
-//    var age: UInt8
-//    var position: Position
-//}
-//
-//protocol Cooking {
-//    func cooking()
-//}
-//struct Cook: MemberOfStaff, Cooking {               // MARK: 2.1. Должности. Повар.
-//
-//    let id: UUID
-//    var name: String
-//    let sex: Sex
-//    var age: UInt8
-//    var position: Position
-//
-//    func cooking() {                                // ! Повар берет первый добавленный заказ из хранилища и готовит.
-//        print("Cook")
-//    }
-//}
-//
-//protocol CookingDessert {                           // MARK: 2.1. Должности. Контдитер.
-//    func cooking()
-//}
-//struct Confectioner: MemberOfStaff, CookingDessert {
-//
-//    let id: UUID
-//    var name: String
-//    let sex: Sex
-//    var age: UInt8
-//    var position: Position
-//
-//    func cooking() {
-//        print("Dessert cooking...")
-//        print("Dessert is ready")
-//    }
-//}
 
 
 
@@ -563,6 +692,4 @@ butler.toDB()
 //    }
 //}
 
-
-
-
+//let membersOfStaff = staff.filter({ $0 is Garcon }) // выделяем официантов
