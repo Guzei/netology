@@ -1,3 +1,7 @@
+//
+// Домашнее задание "Как создавать свои ошибки"
+//
+
 import Foundation
 
 let line = "\n" + String(repeating: "-" as Character, count: 80) + "\n"
